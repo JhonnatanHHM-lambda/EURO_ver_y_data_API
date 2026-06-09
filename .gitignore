@@ -1,0 +1,58 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.Python
+env/
+venv/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Django ────────────────────────────────────────────────────────────────────
+*.log
+local_settings.py
+staticfiles/
+media/
+db.sqlite3
+
+# ── Entorno ───────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Scripts de análisis/utilidad temporales (no forman parte de la app) ──────
+analizar_bases.py
+analisis_bases.txt
+check_excel.py
+extraer_sedes.py
+gen_email_template.py
+gen_excels.py
+gen_excels_reales.py
+recalcular_estados.py
+run_migrate.py
+ver_errores.py
+ver_ultimo_error.py
+extracted_acta.txt
+
+# ── Logs de Celery ────────────────────────────────────────────────────────────
+celery_error.log
+celery_worker.log
