@@ -1,0 +1,31 @@
+# Core
+Django==5.0
+djangorestframework==3.16.1
+
+# Auth
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.10.1
+
+# CORS
+django-cors-headers==4.9.0
+
+# Docs
+drf-yasg==1.21.11
+
+# Async
+celery==5.5.3
+django-celery-beat==2.8.1
+django-celery-results==2.6.0
+redis==7.0.1
+
+# DB
+psycopg2-binary==2.9.12
+
+# Utils
+shortuuid==1.0.13
+python-dotenv==1.2.1
+pillow==12.0.0
+
+# Server
+gunicorn==23.0.0
+whitenoise==6.11.0
