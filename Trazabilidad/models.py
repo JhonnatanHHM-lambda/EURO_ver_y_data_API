@@ -20,6 +20,11 @@ class Sede(BaseModel):
     nombre = models.CharField(max_length=120, verbose_name='Nombre')
     ciudad = models.CharField(max_length=100, verbose_name='Ciudad')
     codigo = models.CharField(max_length=20, unique=True, verbose_name='Código')
+    dias_alerta_director = models.PositiveIntegerField(
+        default=5,
+        verbose_name='Días alerta director',
+        help_text='Días antes del vencimiento del contrato para notificar al director de esta sede'
+    )
 
     class Meta:
         verbose_name = 'Sede'

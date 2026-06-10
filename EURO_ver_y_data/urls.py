@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/', include('Usuarios.urls')),
     path('api/', include('Notificaciones.urls')),
     path('api/', include('Trazabilidad.urls')),
+    path('api/', include('Contratos.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc'),
 ]

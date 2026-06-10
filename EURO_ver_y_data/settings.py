@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 load_dotenv()
 
@@ -28,6 +29,7 @@ LOCAL_APPS = [
     'Usuarios',
     'Notificaciones',
     'Trazabilidad',
+    'Contratos',
 ]
 
 THIRD_PARTY_APPS = [
@@ -146,6 +148,48 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # OTP config
 OTP_EXPIRY_MINUTES = 10
+
+# MinIO
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'localhost:9000')
+MINIO_PUBLIC_ENDPOINT = os.getenv('MINIO_PUBLIC_ENDPOINT', 'localhost:9000')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin')
+MINIO_BUCKET = os.getenv('MINIO_BUCKET', 'euro-vyd')
+MINIO_USE_HTTPS = os.getenv('MINIO_USE_HTTPS', 'False') == 'True'
+MINIO_PUBLIC_USE_HTTPS = os.getenv('MINIO_PUBLIC_USE_HTTPS', 'False') == 'True'
+MINIO_CERT_CHECK = os.getenv('MINIO_CERT_CHECK', 'False') == 'True'
+
+# Contratos — bucket separado dentro del mismo MinIO
+MINIO_BUCKET_CONTRATOS = os.getenv('MINIO_BUCKET_CONTRATOS', 'euro-contratos')
+
+# URL base del frontend (para links de firma en emails)
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173/ver-y-data')
+
+# Celery Beat — tareas programadas del módulo Contratos
+CELERY_BEAT_SCHEDULE = {
+    'contratos-revisar-60-dias': {
+        'task': 'Contratos.tasks.revisar_contratos_60_dias',
+        'schedule': crontab(hour=0, minute=30),
+    },
+    'contratos-revisar-proximos-vencer': {
+        'task': 'Contratos.tasks.revisar_contratos_proximos_vencer',
+        'schedule': crontab(hour=1, minute=0),
+    },
+    'contratos-escalar-sin-firma': {
+        'task': 'Contratos.tasks.escalar_contratos_sin_firma',
+        'schedule': crontab(hour=8, minute=0),
+    },
+    'contratos-notificar-directores-sin-decision': {
+        'task': 'Contratos.tasks.notificar_directores_sin_decision',
+        'schedule': crontab(hour=8, minute=30),
+    },
+}
+
+# Enrutamiento de colas Celery
+CELERY_TASK_ROUTES = {
+    'Contratos.tasks.*': {'queue': 'contratos'},
+    'Notificaciones.tasks.*': {'queue': 'default'},
+}
 
 # Swagger
 SWAGGER_SETTINGS = {
