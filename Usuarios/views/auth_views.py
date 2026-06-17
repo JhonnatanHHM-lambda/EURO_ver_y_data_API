@@ -244,19 +244,33 @@ class RecuperacionValidarOTPView(APIView):
 
 class NotificacionesAdminView(APIView):
 
-    @require_permission(['can_manage_users'], app_label='Usuarios')
     def get(self, request):
-        notifs = NotificacionAdmin.objects.select_related('solicitud__usuario').all()[:50]
+        from django.db.models import Q
+        es_admin = request.user.is_superuser or request.user.has_perm('Usuarios.can_manage_users')
+
+        if es_admin:
+            # Admins ven notifs globales (usuario=null) + las suyas propias
+            qs = NotificacionAdmin.objects.filter(
+                Q(usuario__isnull=True) | Q(usuario=request.user)
+            ).select_related('solicitud__usuario', 'usuario', 'contrato')
+        else:
+            # Directores y otros roles solo ven sus notifs personales
+            qs = NotificacionAdmin.objects.filter(
+                usuario=request.user
+            ).select_related('solicitud__usuario', 'contrato')
+
+        notifs = qs.order_by('-creado')[:50]
         data = []
         for n in notifs:
             sol = n.solicitud
             data.append({
-                'id':        n.id,
-                'tipo':      n.tipo,
-                'titulo':    n.titulo,
-                'cuerpo':    n.cuerpo,
-                'leida':     n.leida,
-                'creado':    n.creado,
+                'id':          n.id,
+                'tipo':        n.tipo,
+                'titulo':      n.titulo,
+                'cuerpo':      n.cuerpo,
+                'leida':       n.leida,
+                'creado':      n.creado,
+                'contrato_id': n.contrato_id,
                 'solicitud': {
                     'id':      sol.id,
                     'estado':  sol.estado,
@@ -267,14 +281,18 @@ class NotificacionesAdminView(APIView):
                     },
                 } if sol else None,
             })
-        no_leidas = NotificacionAdmin.objects.filter(leida=False).count()
+        no_leidas = qs.filter(leida=False).count()
         return Response({'notificaciones': data, 'no_leidas': no_leidas})
 
-    @require_permission(['can_manage_users'], app_label='Usuarios')
     def put(self, request, pk):
-        """Marca notificación como leída."""
+        """Marca notificación como leída — cualquier usuario puede marcar las suyas."""
+        from django.db.models import Q
+        es_admin = request.user.is_superuser or request.user.has_perm('Usuarios.can_manage_users')
         try:
-            notif = NotificacionAdmin.objects.get(pk=pk)
+            if es_admin:
+                notif = NotificacionAdmin.objects.get(pk=pk)
+            else:
+                notif = NotificacionAdmin.objects.get(pk=pk, usuario=request.user)
         except NotificacionAdmin.DoesNotExist:
             return Response({'error': 'No encontrada.'}, status=404)
         notif.leida = True

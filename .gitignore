@@ -40,6 +40,8 @@ Thumbs.db
 desktop.ini
 
 # ── Scripts de análisis/utilidad temporales (no forman parte de la app) ──────
+explorar_siesa.py
+siesa_contratos_proximos.json
 analizar_bases.py
 analisis_bases.txt
 check_excel.py
@@ -53,6 +55,19 @@ ver_errores.py
 ver_ultimo_error.py
 extracted_acta.txt
 
-# ── Logs de Celery ────────────────────────────────────────────────────────────
+# ── Celery Beat (runtime state) ──────────────────────────────────────────────
+celerybeat-schedule
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir
 celery_error.log
 celery_worker.log
+
+# ── Scripts de fix/diagnóstico puntuales (ya aplicados, no son código de la app) ──
+fix_*.py
+diagnostico_*.py
+limpiar_contratos_duplicados.py
+limpiar_para_produccion.py
+preparar_test_840.py
+reenviar_prorroga_restrepo.py
+regen_prorroga.py

@@ -10,7 +10,7 @@ GET /api/trazabilidad/registros/<pk>/historial/
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
+from django.db.models import Q, Exists, OuterRef
 
 from EURO_ver_y_data.decoradores import require_permission
 from Trazabilidad.models import (
@@ -314,7 +314,11 @@ class AdminRegistrosView(APIView):
             if val:
                 qs = qs.filter(**{campo: val})
 
-        qs = qs.order_by('-creado')
+        qs = qs.order_by('-creado').annotate(
+            _tiene_historial=Exists(
+                HistorialCambioRegistro.objects.filter(registro=OuterRef('pk'))
+            )
+        )
 
         paginator = PageNumberPagination()
         paginator.page_size = int(request.query_params.get('page_size', 25))
@@ -322,7 +326,7 @@ class AdminRegistrosView(APIView):
 
         data = []
         for r in page:
-            tiene_historial = HistorialCambioRegistro.objects.filter(registro=r).exists()
+            tiene_historial = r._tiene_historial
             data.append({
                 'id':               r.id,
                 'documento_id':     r.documento_id,

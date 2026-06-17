@@ -27,11 +27,14 @@ class Contrato(models.Model):
     ESTADO_CHOICES = [
         ('PENDIENTE_FIRMA_NO_PRORROGA', 'Pendiente firma — no prórroga'),
         ('PENDIENTE_DECISION_DIRECTOR', 'Pendiente decisión director'),
+        ('PENDIENTE_CONDICIONES_GH', 'Pendiente condiciones GH'),
+        ('PENDIENTE_NOTIFICACION_EMPLEADO', 'Pendiente notificación empleado'),
         ('PENDIENTE_FIRMA_PRORROGA', 'Pendiente firma — prórroga'),
         ('PENDIENTE_FIRMA_TERMINACION', 'Pendiente firma — terminación'),
         ('FIRMADO', 'Firmado'),
         ('SIN_CANAL_CONTACTO', 'Sin canal de contacto'),
         ('ERROR_NOTIFICACION', 'Error de notificación'),
+        ('CANCELADO', 'Cancelado'),
     ]
     TIPO_CHOICES = [
         ('NO_PRORROGA', 'No prórroga'),
@@ -76,6 +79,12 @@ class Contrato(models.Model):
     # PDFs en MinIO
     pdf_carta_key = models.CharField(max_length=500, blank=True)
     pdf_firmado_key = models.CharField(max_length=500, blank=True)
+
+    # Firma secuencial: cuando el director decide sobre un contrato cuya NO_PRORROGA
+    # aún no fue firmada, el empleado debe firmar primero la NO_PRORROGA y luego la
+    # PRORROGA/TERMINACION dentro del mismo enlace.
+    no_prorroga_firmada = models.BooleanField(default=True)
+    pdf_no_prorroga_key = models.CharField(max_length=500, blank=True, default='')
 
     # Prórroga
     duracion_prorroga = models.CharField(max_length=10, choices=DURACION_PRORROGA_CHOICES, blank=True)
@@ -130,6 +139,8 @@ class EventoContrato(models.Model):
         ('FIRMADO', 'Firmado'),
         ('ESCALADO', 'Escalado a director'),
         ('DECISION_DIRECTOR', 'Decisión de director'),
+        ('CONDICIONES_GH', 'Condiciones definidas por GH'),
+        ('NOTIFICACION_EMPLEADO', 'Director notificó al empleado'),
         ('ERROR', 'Error'),
     ]
     contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name='eventos')
@@ -158,10 +169,10 @@ class AsignacionCentro(models.Model):
         ('GH', 'Gestión Humana'),
         ('DIRECTOR', 'Director'),
     ]
-    usuario = models.OneToOneField(
+    usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='asignacion_centro',
+        related_name='asignaciones_centro',
         verbose_name='Usuario'
     )
     sede = models.ForeignKey(
@@ -178,6 +189,7 @@ class AsignacionCentro(models.Model):
         verbose_name = 'Asignación de sede'
         verbose_name_plural = 'Asignaciones de sede'
         db_table = 'contratos_asignaciones_sede'
+        unique_together = [('usuario', 'sede')]
 
     def __str__(self):
         return f'{self.usuario} → {self.sede.codigo} ({self.rol})'

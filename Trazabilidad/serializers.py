@@ -9,14 +9,15 @@ class SedeSerializer(serializers.ModelSerializer):
 
 
 class SedeAdminSerializer(serializers.ModelSerializer):
-    total_cargas = serializers.SerializerMethodField()
+    total_cargas         = serializers.SerializerMethodField()
+    dias_alerta_director = serializers.IntegerField(min_value=5)
 
     def get_total_cargas(self, obj):
         return CargaExcel.objects.filter(sede=obj).count()
 
     class Meta:
         model = Sede
-        fields = ['id', 'nombre', 'ciudad', 'codigo', 'estado', 'total_cargas']
+        fields = ['id', 'nombre', 'ciudad', 'codigo', 'estado', 'dias_alerta_director', 'total_cargas']
 
 
 class OrigenSerializer(serializers.ModelSerializer):
@@ -31,21 +32,17 @@ class OrigenSerializer(serializers.ModelSerializer):
 
 
 class EmpleadoListSerializer(serializers.ModelSerializer):
+    """Serializer ligero para la vista de lista — solo campos visibles en la tabla."""
     sede_nombre = serializers.CharField(source='sede.nombre', read_only=True, allow_null=True)
     sede_ciudad = serializers.CharField(source='sede.ciudad', read_only=True, allow_null=True)
 
     class Meta:
         model = EmpleadoTrazabilidad
         fields = [
-            'id', 'documento_id', 'tipo_documento', 'nombre_completo',
+            'id', 'documento_id', 'tipo_documento', 'nombre_completo', 'email',
             'origen_datos', 'estado_candidato', 'tipo_proceso',
             'sede', 'sede_nombre', 'sede_ciudad',
-            'cargo', 'fecha_ingreso', 'fecha_retiro', 'motivo_retiro',
-            'celular', 'email', 'observaciones', 'psicologa',
-            'fecha_entrevista', 'fuente_carga', 'creado',
-            'tipo_sangre', 'nivel_escolaridad', 'fecha_nacimiento', 'sexo',
-            'expedida_en', 'barrio_municipio', 'direccion', 'centro_costos',
-            'eps', 'pensiones', 'arl',
+            'cargo',
         ]
 
 

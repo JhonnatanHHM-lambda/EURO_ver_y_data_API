@@ -169,25 +169,32 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173/ver-y-data')
 CELERY_BEAT_SCHEDULE = {
     'contratos-revisar-60-dias': {
         'task': 'Contratos.tasks.revisar_contratos_60_dias',
-        'schedule': crontab(hour=0, minute=30),
+        'schedule': crontab(hour=7, minute=0),
     },
     'contratos-revisar-proximos-vencer': {
         'task': 'Contratos.tasks.revisar_contratos_proximos_vencer',
-        'schedule': crontab(hour=1, minute=0),
+        'schedule': crontab(hour=7, minute=5),
     },
     'contratos-escalar-sin-firma': {
         'task': 'Contratos.tasks.escalar_contratos_sin_firma',
-        'schedule': crontab(hour=8, minute=0),
+        'schedule': crontab(hour=7, minute=10),
     },
     'contratos-notificar-directores-sin-decision': {
         'task': 'Contratos.tasks.notificar_directores_sin_decision',
-        'schedule': crontab(hour=8, minute=30),
+        'schedule': crontab(hour=7, minute=15),
+    },
+    'contratos-alertar-urgentes': {
+        'task': 'Contratos.tasks.alertar_contratos_urgentes',
+        'schedule': crontab(hour=7, minute=20),
     },
 }
 
-# Enrutamiento de colas Celery
+# Celery — cola predeterminada para tareas sin ruta explícita
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+
+# Enrutamiento de colas
 CELERY_TASK_ROUTES = {
-    'Contratos.tasks.*': {'queue': 'contratos'},
+    'Contratos.tasks.*':     {'queue': 'contratos'},
     'Notificaciones.tasks.*': {'queue': 'default'},
 }
 
@@ -201,4 +208,32 @@ SWAGGER_SETTINGS = {
         }
     },
     'USE_SESSION_AUTH': False,
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[%(levelname)s %(name)s] %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'Contratos': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'Notificaciones': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }

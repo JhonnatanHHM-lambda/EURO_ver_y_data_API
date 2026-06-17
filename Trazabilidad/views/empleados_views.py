@@ -130,9 +130,13 @@ class KPIsTrazabilidadView(APIView):
         # Solo el registro más reciente de cada persona
         ultimos = base.filter(id=ultimo_id_sq)
 
-        # KPIs basados en el proceso MÁS RECIENTE de cada persona
-        activos      = ultimos.filter(tipo_proceso='EMPLEADO').count()
-        retirados    = ultimos.filter(tipo_proceso='RETIRADO').count()
+        # KPIs basados en el proceso MÁS RECIENTE de cada persona — un solo aggregate
+        conteos   = ultimos.aggregate(
+            activos=Count('id', filter=Q(tipo_proceso='EMPLEADO')),
+            retirados=Count('id', filter=Q(tipo_proceso='RETIRADO')),
+        )
+        activos   = conteos['activos']
+        retirados = conteos['retirados']
 
         # Inhabilitados: cualquier registro con ese estado (no solo el último)
         inhabilitados = (
