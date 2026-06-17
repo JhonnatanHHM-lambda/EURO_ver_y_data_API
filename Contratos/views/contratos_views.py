@@ -431,16 +431,25 @@ class CrearContratoDemoView(APIView):
         try:
             pdf_key = generar_carta_no_prorroga(contrato)
             contrato.pdf_carta_key = pdf_key
+            contrato.save(update_fields=['pdf_carta_key'])
         except Exception as e:
             logger.warning(f'Demo: no se pudo generar carta para contrato {contrato.id}: {e}')
 
-        contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
-        contrato.save()
-
+        # Paso 1 — notificar al empleado (igual que revisar_contratos_60_dias)
         EventoContrato.objects.create(
             contrato=contrato, tipo_evento='GENERADO',
             detalle={'demo': True},
         )
+        from ..tasks import enviar_notificacion_empleado_task
+        try:
+            enviar_notificacion_empleado_task.delay(contrato.id)
+        except Exception as e:
+            logger.warning(f'Demo: no se pudo encolar notificación empleado: {e}')
+
+        # Paso 2 — escalar al director (igual que revisar_contratos_proximos_vencer)
+        contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+        contrato.save(update_fields=['estado'])
+
         EventoContrato.objects.create(
             contrato=contrato, tipo_evento='ESCALADO',
             detalle={'motivo': 'revision_proximos_vencer', 'dias': 2, 'demo': True},
@@ -493,6 +502,10 @@ class CrearContratoDemoView(APIView):
 
         if total == 0:
             return Response({'mensaje': 'No hay contratos demo para eliminar.', 'eliminados': 0})
+
+        # Eliminar notificaciones antes del delete (FK usa SET_NULL, no CASCADE)
+        from Usuarios.models import NotificacionAdmin
+        NotificacionAdmin.objects.filter(contrato__in=demos).delete()
 
         keys_a_borrar = []
         for c in demos:

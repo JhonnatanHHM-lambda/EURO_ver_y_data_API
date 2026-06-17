@@ -229,9 +229,11 @@ class ConfirmarFirmaNoProrrogaView(APIView):
         logger.info(f'Firma NO_PRORROGA secuencial token={token} ip={ip}')
 
         # Generar PDF firmado de la NO_PRORROGA y guardarlo como documento adicional
+        unsigned_no_prorroga_key = contrato.pdf_no_prorroga_key
         try:
             from ..utils.pdf_generator import generar_pdf_no_prorroga_firmada
             from ..models import DocumentoAdicional
+            from ..utils.minio_client import delete_from_minio
             pdf_key = generar_pdf_no_prorroga_firmada(contrato, firma_data)
             DocumentoAdicional.objects.create(
                 contrato=contrato,
@@ -239,6 +241,12 @@ class ConfirmarFirmaNoProrrogaView(APIView):
                 minio_key=pdf_key,
                 subido_por=None,
             )
+            # Eliminar la carta sin firmar — ya existe la versión firmada como DocumentoAdicional
+            if unsigned_no_prorroga_key and unsigned_no_prorroga_key != pdf_key:
+                try:
+                    delete_from_minio(unsigned_no_prorroga_key)
+                except Exception:
+                    pass
         except Exception as e:
             logger.error(f'Error generando PDF no_prorroga firmada token={token}: {e}')
 

@@ -273,6 +273,7 @@ def generar_y_guardar_pdf_firmado(contrato_id):
     try:
         contrato = Contrato.objects.get(id=contrato_id)
         old_firmado_key = contrato.pdf_firmado_key  # capturar ANTES de sobrescribir
+        old_carta_key   = contrato.pdf_carta_key    # capturar para borrar de MinIO tras firmar
 
         pdf_key = generar_pdf_firmado(contrato, contrato.firma_canvas_data)
 
@@ -296,6 +297,15 @@ def generar_y_guardar_pdf_firmado(contrato_id):
         contrato.pdf_carta_key = ''
         contrato.save(update_fields=['pdf_firmado_key', 'pdf_carta_key'])
         logger.info(f'PDF firmado generado para contrato {contrato_id}: {pdf_key}')
+
+        # Eliminar la carta sin firmar — ya no es necesaria; solo se conserva la firmada
+        if old_carta_key and old_carta_key != pdf_key:
+            from .utils.minio_client import delete_from_minio as _del
+            try:
+                _del(old_carta_key)
+                logger.info(f'Carta sin firmar eliminada de MinIO: {old_carta_key}')
+            except Exception as e:
+                logger.warning(f'No se pudo eliminar carta sin firmar {old_carta_key}: {e}')
     except Contrato.DoesNotExist:
         logger.error(f'generar_y_guardar_pdf_firmado: contrato {contrato_id} no encontrado')
     except Exception as e:
