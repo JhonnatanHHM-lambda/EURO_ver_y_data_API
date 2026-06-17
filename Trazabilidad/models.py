@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 from Base.models import BaseModel
 
 
@@ -22,8 +23,9 @@ class Sede(BaseModel):
     codigo = models.CharField(max_length=20, unique=True, verbose_name='Código')
     dias_alerta_director = models.PositiveIntegerField(
         default=5,
+        validators=[MinValueValidator(5)],
         verbose_name='Días alerta director',
-        help_text='Días antes del vencimiento del contrato para notificar al director de esta sede'
+        help_text='Días antes del vencimiento del contrato para notificar al director de esta sede. Mínimo 5.'
     )
 
     class Meta:

@@ -9,22 +9,24 @@ logger = logging.getLogger(__name__)
 @shared_task(name='Contratos.tasks.revisar_contratos_60_dias', queue='contratos')
 def revisar_contratos_60_dias():
     """Genera cartas de no prórroga para empleados que vencen en 60 días."""
-    from .utils.siesa_simulator import obtener_empleados_por_dias
+    from .utils.siesa_connector import obtener_empleados_en_rango
     from .utils.pdf_generator import generar_carta_no_prorroga
-    from .utils.notificaciones import enviar_notificacion_empleado_task
-    from .models import Contrato
+    from .models import Contrato, EventoContrato
     from Trazabilidad.models import Sede
 
-    fecha_objetivo = timezone.localdate() + timedelta(days=60)
-    empleados = obtener_empleados_por_dias(fecha_objetivo)
+    hoy = timezone.localdate()
+    fecha_limite = hoy + timedelta(days=60)
+    empleados = obtener_empleados_en_rango(hoy, fecha_limite)
 
     procesados = 0
     for emp in empleados:
+        # Bloquear si ya existe CUALQUIER contrato activo para este empleado+fecha,
+        # sin importar el tipo. Evita crear NO_PRORROGA cuando ya hay TERMINACION o
+        # PRORROGA (generadas por decisión del director en un ciclo anterior).
+        # En producción esto nunca colisiona: cada ciclo de contrato tiene nueva fecha.
         existe = Contrato.objects.filter(
             documento_id=emp['documento_id'],
-            tipo_carta='NO_PRORROGA',
             fecha_finalizacion=emp['fecha_finalizacion'],
-            token_usado=False,
         ).exists()
         if existe:
             continue
@@ -55,13 +57,14 @@ def revisar_contratos_60_dias():
             contrato.pdf_carta_key = pdf_key
             contrato.save(update_fields=['pdf_carta_key'])
 
-            enviar_notificacion_empleado_task.delay(contrato.id)
+            from Contratos.tasks import enviar_notificacion_empleado_task as _enviar
+            _enviar.delay(contrato.id)
             procesados += 1
 
         except Exception as e:
             logger.error(f'Error procesando empleado {emp.get("documento_id")}: {e}')
 
-    logger.info(f'revisar_contratos_60_dias: {procesados} contratos creados para {fecha_objetivo}')
+    logger.info(f'revisar_contratos_60_dias: {procesados} contratos creados (hasta {fecha_limite})')
 
 
 @shared_task(name='Contratos.tasks.revisar_contratos_proximos_vencer', queue='contratos')
@@ -76,10 +79,23 @@ def revisar_contratos_proximos_vencer():
     for sede in Sede.objects.filter(estado=True):
         fecha_objetivo = hoy + timedelta(days=sede.dias_alerta_director)
 
+        # Rango: desde hoy hasta hoy+dias_alerta_director, para que si el task falla
+        # un día los contratos no queden atrapados hasta el siguiente ciclo exacto.
+        # alertar_contratos_urgentes cubre los ya expirados (fecha < hoy).
         contratos = Contrato.objects.filter(
             sede=sede,
-            fecha_finalizacion=fecha_objetivo,
-        ).exclude(estado__in=['PRORROGA', 'TERMINACION', 'PENDIENTE_DECISION_DIRECTOR'])
+            fecha_finalizacion__lte=fecha_objetivo,
+            fecha_finalizacion__gte=hoy,
+        ).exclude(estado__in=[
+            'PENDIENTE_DECISION_DIRECTOR',
+            'PENDIENTE_FIRMA_PRORROGA',
+            'PENDIENTE_FIRMA_TERMINACION',
+            'SIN_CANAL_CONTACTO',
+            'ERROR_NOTIFICACION',
+        ]).exclude(
+            estado='FIRMADO',
+            tipo_carta__in=['PRORROGA', 'TERMINACION'],
+        )
 
         if not contratos.exists():
             continue
@@ -91,19 +107,37 @@ def revisar_contratos_proximos_vencer():
             usuario__is_active=True,
         ).select_related('usuario')
 
-        for asignacion in asignaciones:
-            try:
-                enviar_alerta_director(asignacion.usuario, list(contratos), sede.dias_alerta_director)
-                for contrato in contratos:
+        for contrato in contratos:
+            for asignacion in asignaciones:
+                try:
+                    enviar_alerta_director(asignacion.usuario, contrato, sede.dias_alerta_director)
                     contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
                     contrato.save(update_fields=['estado'])
                     EventoContrato.objects.create(
                         contrato=contrato,
                         tipo_evento='ESCALADO',
-                        detalle={'motivo': 'revision_proximos_vencer', 'dias': sede.dias_alerta_director},
+                        detalle={
+                            'motivo': 'revision_proximos_vencer',
+                            'dias': sede.dias_alerta_director,
+                            'director': asignacion.usuario.correo,
+                        },
                     )
-            except Exception as e:
-                logger.error(f'Error notificando director {asignacion.usuario.correo}: {e}')
+                    from Usuarios.models import NotificacionAdmin
+                    NotificacionAdmin.objects.create(
+                        tipo='alerta_contrato',
+                        titulo=f'Contrato próximo a vencer — {contrato.nombre_completo}',
+                        cuerpo=(
+                            f'{contrato.nombre_completo} (Doc: {contrato.documento_id}) — '
+                            f'Cargo: {contrato.cargo}. '
+                            f'Vence el {contrato.fecha_finalizacion.strftime("%d/%m/%Y")}. '
+                            f'Quedan {sede.dias_alerta_director} día(s). '
+                            f'Por favor ingresa al panel de contratos y toma una decisión.'
+                        ),
+                        usuario=asignacion.usuario,
+                        contrato=contrato,
+                    )
+                except Exception as e:
+                    logger.error(f'Error notificando director {asignacion.usuario.correo} para contrato {contrato.id}: {e}')
 
 
 @shared_task(name='Contratos.tasks.enviar_notificacion_empleado_task', queue='contratos')
@@ -138,6 +172,10 @@ def enviar_notificacion_empleado_task(contrato_id):
             )
         except Exception as e:
             logger.error(f'Error enviando email a contrato {contrato_id}: {e}')
+            EventoContrato.objects.create(
+                contrato=contrato, tipo_evento='ERROR',
+                detalle={'canal': 'email', 'destinatario': contrato.email, 'error': str(e)}
+            )
 
     if contrato.celular:
         try:
@@ -148,6 +186,10 @@ def enviar_notificacion_empleado_task(contrato_id):
             )
         except Exception as e:
             logger.error(f'Error enviando WhatsApp a contrato {contrato_id}: {e}')
+            EventoContrato.objects.create(
+                contrato=contrato, tipo_evento='ERROR',
+                detalle={'canal': 'whatsapp', 'destinatario': contrato.celular, 'error': str(e)}
+            )
 
 
 @shared_task(name='Contratos.tasks.escalar_contratos_sin_firma', queue='contratos')
@@ -222,16 +264,116 @@ def notificar_directores_sin_decision():
 
 @shared_task(name='Contratos.tasks.generar_y_guardar_pdf_firmado', queue='contratos')
 def generar_y_guardar_pdf_firmado(contrato_id):
-    """Genera el PDF firmado y lo guarda en MinIO tras confirmar la firma."""
-    from .models import Contrato
+    """Genera el PDF firmado con la firma del empleado y lo guarda en MinIO."""
+    from .models import Contrato, DocumentoAdicional
     from .utils.pdf_generator import generar_pdf_firmado
+
+    _TIPO_LABELS = {'NO_PRORROGA': 'No Prorroga', 'PRORROGA': 'Prorroga', 'TERMINACION': 'Terminacion'}
 
     try:
         contrato = Contrato.objects.get(id=contrato_id)
+        old_firmado_key = contrato.pdf_firmado_key  # capturar ANTES de sobrescribir
+
         pdf_key = generar_pdf_firmado(contrato, contrato.firma_canvas_data)
+
+        # Red de seguridad: si ya había un PDF firmado de un ciclo anterior y no fue
+        # preservado por _preservar_carta_firmada en la vista, guardarlo ahora.
+        if old_firmado_key and old_firmado_key != pdf_key:
+            ya_existe = DocumentoAdicional.objects.filter(
+                contrato=contrato, minio_key=old_firmado_key
+            ).exists()
+            if not ya_existe:
+                tipo_label = _TIPO_LABELS.get(contrato.tipo_carta, contrato.tipo_carta)
+                DocumentoAdicional.objects.create(
+                    contrato=contrato,
+                    nombre_archivo=f'Carta {tipo_label} firmada (ciclo anterior).pdf',
+                    minio_key=old_firmado_key,
+                    subido_por=None,
+                )
+                logger.info(f'PDF firmado anterior preservado como DocumentoAdicional: {old_firmado_key}')
+
         contrato.pdf_firmado_key = pdf_key
-        contrato.save(update_fields=['pdf_firmado_key'])
+        contrato.pdf_carta_key = ''
+        contrato.save(update_fields=['pdf_firmado_key', 'pdf_carta_key'])
+        logger.info(f'PDF firmado generado para contrato {contrato_id}: {pdf_key}')
     except Contrato.DoesNotExist:
         logger.error(f'generar_y_guardar_pdf_firmado: contrato {contrato_id} no encontrado')
     except Exception as e:
         logger.error(f'Error generando PDF firmado para contrato {contrato_id}: {e}')
+
+
+@shared_task(name='Contratos.tasks.alertar_contratos_urgentes', queue='contratos')
+def alertar_contratos_urgentes():
+    """Alerta urgente al director cuando un contrato activo vence en ≤2 días.
+    Sin deduplicación: se envía aunque se haya notificado el día anterior."""
+    from .models import Contrato, AsignacionCentro, EventoContrato
+    from .utils.notificaciones import enviar_alerta_urgente_director
+    from django.db.models import Q
+    from Usuarios.models import NotificacionAdmin
+
+    hoy = timezone.localdate()
+    fecha_limite = hoy + timedelta(days=2)
+
+    contratos = Contrato.objects.filter(
+        fecha_finalizacion__lte=fecha_limite,  # hasta hoy+2
+        # Sin límite inferior: incluye contratos ya expirados que no llegaron a transicionar
+    ).exclude(
+        Q(estado='FIRMADO') & Q(tipo_carta__in=['PRORROGA', 'TERMINACION'])
+    ).exclude(
+        # Estos estados ya están en manos del director o más adelante — no reenviar alerta
+        estado__in=['PENDIENTE_DECISION_DIRECTOR', 'PENDIENTE_CONDICIONES_GH',
+                    'PENDIENTE_NOTIFICACION_EMPLEADO', 'PENDIENTE_FIRMA_PRORROGA',
+                    'PENDIENTE_FIRMA_TERMINACION', 'SIN_CANAL_CONTACTO', 'ERROR_NOTIFICACION'],
+    ).select_related('sede')
+
+    for contrato in contratos:
+        if not contrato.sede:
+            continue
+
+        dias_restantes = (contrato.fecha_finalizacion - hoy).days
+
+        asignaciones = AsignacionCentro.objects.filter(
+            sede=contrato.sede,
+            rol='DIRECTOR',
+            activo=True,
+            usuario__is_active=True,
+        ).select_related('usuario')
+
+        for asignacion in asignaciones:
+            try:
+                enviar_alerta_urgente_director(asignacion.usuario, contrato, dias_restantes)
+
+                # Solo escalar a PENDIENTE_DECISION_DIRECTOR si el empleado aún no
+                # firmó la NO_PRORROGA y el director no ha tomado ninguna decisión.
+                # Para PRORROGA/TERMINACION el director ya decidió — NO revertir.
+                if contrato.estado == 'PENDIENTE_FIRMA_NO_PRORROGA':
+                    contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+                    contrato.save(update_fields=['estado'])
+
+                EventoContrato.objects.create(
+                    contrato=contrato,
+                    tipo_evento='ESCALADO',
+                    detalle={
+                        'motivo': 'alerta_urgente_vencimiento',
+                        'dias_restantes': dias_restantes,
+                        'director': asignacion.usuario.correo,
+                    },
+                )
+                NotificacionAdmin.objects.create(
+                    tipo='alerta_urgente',
+                    titulo=f'URGENTE — Contrato vence en {dias_restantes} día(s): {contrato.nombre_completo}',
+                    cuerpo=(
+                        f'{contrato.nombre_completo} (Doc: {contrato.documento_id}) — '
+                        f'Cargo: {contrato.cargo}. '
+                        f'Vence el {contrato.fecha_finalizacion.strftime("%d/%m/%Y")}. '
+                        f'Quedan {dias_restantes} día(s). Acción inmediata requerida.'
+                    ),
+                    usuario=asignacion.usuario,
+                    contrato=contrato,
+                )
+            except Exception as e:
+                logger.error(
+                    f'Error alerta urgente contrato {contrato.id} → {asignacion.usuario.correo}: {e}'
+                )
+
+    logger.info(f'alertar_contratos_urgentes: {contratos.count()} contratos urgentes revisados')

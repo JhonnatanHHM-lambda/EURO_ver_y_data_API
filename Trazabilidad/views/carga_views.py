@@ -1,4 +1,5 @@
 import io
+import os
 import re
 import unicodedata
 import traceback
@@ -15,6 +16,7 @@ _TIPO_SANGRE_RE = re.compile(
 
 import openpyxl
 import pandas as pd
+from django.http import FileResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, parsers
@@ -1117,3 +1119,22 @@ class HistorialCargasView(APIView):
     def get(self, request):
         cargas = CargaExcel.objects.select_related('sede', 'cargado_por').all()[:50]
         return Response(CargaExcelSerializer(cargas, many=True).data)
+
+
+class PlantillaCargaView(APIView):
+    """Descarga la plantilla Excel de carga de trazabilidad."""
+    permission_classes = []  # pública — es solo una plantilla
+
+    def get(self, request):
+        ruta = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            'recursos', 'Plantilla_Carga_Trazabilidad_Euro.xlsx',
+        )
+        if not os.path.exists(ruta):
+            return Response({'error': 'Plantilla no encontrada.'}, status=404)
+        return FileResponse(
+            open(ruta, 'rb'),
+            as_attachment=True,
+            filename='Plantilla_Carga_Trazabilidad_Euro.xlsx',
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )

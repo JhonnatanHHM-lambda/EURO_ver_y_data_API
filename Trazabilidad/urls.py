@@ -1,6 +1,7 @@
 from django.urls import path
 from .views.sedes_views import SedesView
-from .views.carga_views import PreviewExcelView, CargarExcelView
+from .views.carga_views import PreviewExcelView, CargarExcelView, PlantillaCargaView
+from .views.pandape_views import PandapeProcesarView, PandapeConfirmarView, PandapeAutorizarView
 from .views.historial_views import HistorialCargasView, RevertirCargaView
 from .views.empleados_views import EmpleadosView, KPIsTrazabilidadView
 from .views.resolver_sedes import ResolverSedesView
@@ -25,6 +26,7 @@ urlpatterns = [
     path('origenes/', OrigenesAdminView.as_view(), name='origenes-publico'),
     path('trazabilidad/preview/', PreviewExcelView.as_view(), name='preview-excel'),
     path('trazabilidad/cargar/', CargarExcelView.as_view(), name='cargar-excel'),
+    path('trazabilidad/plantilla-carga/', PlantillaCargaView.as_view(), name='plantilla-carga'),
     path('trazabilidad/historial/', HistorialCargasView.as_view(), name='historial-cargas'),
     path('trazabilidad/cargas/<int:pk>/firmar/', FirmarActaView.as_view(),    name='firmar-acta'),
     path('trazabilidad/cargas/<int:pk>/firma-imagen/', FirmaImagenView.as_view(), name='firma-imagen'),
@@ -40,4 +42,8 @@ urlpatterns = [
     path('trazabilidad/registros/<int:pk>/eliminar/', EliminarRegistroView.as_view(), name='eliminar-registro'),
     path('trazabilidad/registros/<int:pk>/editar/', EditarRegistroView.as_view(), name='editar-registro'),
     path('trazabilidad/registros/<int:pk>/historial/', HistorialRegistroView.as_view(), name='historial-registro'),
+    # PandaPé — verificación de precandidatos
+    path('trazabilidad/pandape/procesar/', PandapeProcesarView.as_view(), name='pandape-procesar'),
+    path('trazabilidad/pandape/confirmar/', PandapeConfirmarView.as_view(), name='pandape-confirmar'),
+    path('trazabilidad/pandape/autorizar/<str:documento_id>/', PandapeAutorizarView.as_view(), name='pandape-autorizar'),
 ]

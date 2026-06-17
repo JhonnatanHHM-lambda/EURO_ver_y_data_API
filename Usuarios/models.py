@@ -70,6 +70,13 @@ class Usuario(BaseModel, AbstractBaseUser, PermissionsMixin):
             ('can_manage_sedes', 'Puede gestionar sedes y orígenes de datos'),
             ('can_edit_registros', 'Puede editar estado y proceso de registros de trazabilidad'),
             ('can_manage_cargas', 'Puede ver historial de cargas y revertirlas'),
+            # Vencimientos y Contrataciones
+            ('can_view_contratos',           'Puede ver el panel de vencimientos'),
+            ('can_decide_contratos',         'Puede tomar decisiones sobre vencimientos: prorrogar o terminar'),
+            ('can_set_condiciones_contratos', 'Puede definir condiciones de prórroga/terminación (rol GH)'),
+            ('can_escanear_siesa',            'Puede ejecutar consulta manual de contratos desde SIESA'),
+            ('can_manage_asignaciones',       'Puede gestionar asignaciones de director/GH a sedes'),
+            ('can_view_contrataciones',       'Puede ver el historial de contrataciones y documentos firmados'),
         ]
         indexes = [
             models.Index(fields=['correo']),
@@ -125,8 +132,16 @@ class SolicitudRecuperacionPassword(BaseModel):
 
 
 class NotificacionAdmin(BaseModel):
-    """Notificación generada para los administradores."""
-    TIPOS = [('recuperacion_password', 'Recuperación de contraseña')]
+    """Notificación generada para administradores y usuarios con roles especiales."""
+    TIPOS = [
+        ('recuperacion_password',       'Recuperación de contraseña'),
+        ('alerta_contrato',             'Alerta de contrato'),
+        ('alerta_urgente',              'Alerta urgente de contrato'),
+        ('decision_director_prorroga',  'Director decidió prorrogar'),
+        ('decision_director_terminacion', 'Director decidió terminar'),
+        ('condiciones_gh_listas',       'GH definió condiciones'),
+        ('contrato_firmado_gh',         'Contrato firmado — aviso GH'),
+    ]
     tipo       = models.CharField(max_length=50, choices=TIPOS)
     titulo     = models.CharField(max_length=200)
     cuerpo     = models.TextField()
@@ -134,6 +149,15 @@ class NotificacionAdmin(BaseModel):
     solicitud  = models.ForeignKey(
         SolicitudRecuperacionPassword, on_delete=models.CASCADE,
         null=True, blank=True, related_name='notificaciones'
+    )
+    contrato   = models.ForeignKey(
+        'Contratos.Contrato', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='notificaciones',
+    )
+    usuario    = models.ForeignKey(
+        'Usuarios.Usuario', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='notificaciones_personales',
+        help_text='Si está vacío es una notificación global de admin; si tiene valor es para ese usuario específico.'
     )
 
     class Meta:

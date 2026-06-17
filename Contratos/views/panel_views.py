@@ -31,19 +31,88 @@ class PanelResumenView(APIView):
 
     def get(self, request):
         qs = Contrato.objects.all()
-        try:
-            asignacion = request.user.asignacion_centro
-            if asignacion.rol == 'DIRECTOR':
-                qs = qs.filter(sede=asignacion.sede)
-        except Exception:
-            pass
+        from ..models import AsignacionCentro
+        sedes_asignadas = AsignacionCentro.objects.filter(
+            usuario=request.user, activo=True
+        ).values_list('sede', flat=True)
+        if sedes_asignadas.exists():
+            qs = qs.filter(sede__in=sedes_asignadas)
+
+        from django.db.models import Q
+        qs_activos = qs.exclude(estado='CANCELADO')
+        # Carta pendiente de firma = tiene pdf_carta_key pero no pdf_firmado_key,
+        # independientemente del estado (incluye PENDIENTE_DECISION_DIRECTOR urgentes).
+        pendiente_firma = qs_activos.filter(
+            Q(pdf_carta_key__isnull=False) & ~Q(pdf_carta_key=''),
+            Q(pdf_firmado_key__isnull=True) | Q(pdf_firmado_key=''),
+        ).exclude(estado='FIRMADO').count()
+        return Response({
+            'total': qs_activos.count(),
+            'pendiente_firma': pendiente_firma,
+            'pendiente_decision': qs_activos.filter(estado='PENDIENTE_DECISION_DIRECTOR').count(),
+            'firmados': qs_activos.filter(estado='FIRMADO').count(),
+            'sin_canal': qs_activos.filter(estado='SIN_CANAL_CONTACTO').count(),
+        })
+
+
+class ContratacionesView(APIView):
+    """Historial de contratos firmados agrupados por empleado."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = (
+            Contrato.objects
+            .filter(estado='FIRMADO')
+            .select_related('sede')
+            .prefetch_related('documentos_adicionales')
+            .order_by('nombre_completo', '-fecha_firma')
+        )
+
+        from ..models import AsignacionCentro
+        sedes_asignadas = AsignacionCentro.objects.filter(
+            usuario=request.user, activo=True
+        ).values_list('sede', flat=True)
+        if sedes_asignadas.exists():
+            qs = qs.filter(sede__in=sedes_asignadas)
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(nombre_completo__icontains=search) | Q(documento_id__icontains=search))
+
+        empleados = {}
+        for c in qs:
+            key = c.documento_id
+            if key not in empleados:
+                empleados[key] = {
+                    'documento_id':    c.documento_id,
+                    'tipo_documento':  c.tipo_documento,
+                    'nombre_completo': c.nombre_completo,
+                    'contratos': [],
+                }
+            docs_adicionales = c.documentos_adicionales.count()
+            total_docs = (1 if c.pdf_firmado_key else 0) + docs_adicionales
+            empleados[key]['contratos'].append({
+                'id':                 c.id,
+                'tipo_carta':         c.tipo_carta,
+                'cargo':              c.cargo,
+                'fecha_finalizacion': str(c.fecha_finalizacion) if c.fecha_finalizacion else None,
+                'fecha_firma':        c.fecha_firma.isoformat() if c.fecha_firma else None,
+                'sede_nombre':        c.sede.nombre if c.sede else None,
+                'sede_codigo':        c.sede.codigo if c.sede else None,
+                'tiene_pdf_firmado':  bool(c.pdf_firmado_key),
+                'total_documentos':   total_docs,
+            })
+
+        lista = list(empleados.values())
+        # Agregar total_documentos por empleado para el badge
+        for emp in lista:
+            emp['total_documentos'] = sum(c['total_documentos'] for c in emp['contratos'])
 
         return Response({
-            'total': qs.count(),
-            'pendiente_firma': qs.filter(estado__startswith='PENDIENTE_FIRMA').count(),
-            'pendiente_decision': qs.filter(estado='PENDIENTE_DECISION_DIRECTOR').count(),
-            'firmados': qs.filter(estado='FIRMADO').count(),
-            'sin_canal': qs.filter(estado='SIN_CANAL_CONTACTO').count(),
+            'empleados':        lista,
+            'total_empleados':  len(lista),
+            'total_contratos':  sum(len(e['contratos']) for e in lista),
         })
 
 

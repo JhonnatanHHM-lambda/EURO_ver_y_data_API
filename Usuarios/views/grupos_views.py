@@ -68,6 +68,14 @@ class PermisosListView(APIView):
         'can_view_trazabilidad',
         'can_manage_sedes',
         'can_manage_cargas',
+        'can_edit_registros',
+        # Vencimientos y Contrataciones
+        'can_view_contratos',
+        'can_decide_contratos',
+        'can_set_condiciones_contratos',
+        'can_escanear_siesa',
+        'can_manage_asignaciones',
+        'can_view_contrataciones',
     ]
 
     @require_permission(['can_manage_roles'], app_label='Usuarios')
