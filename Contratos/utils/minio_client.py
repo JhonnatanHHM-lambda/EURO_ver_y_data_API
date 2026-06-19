@@ -22,12 +22,15 @@ def get_minio_client():
 
 def get_public_minio_client():
     from minio import Minio
+    # region pre-seteado para evitar el HTTP call de descubrimiento de región,
+    # que cuelga cuando 192.64.85.84:9000 no es alcanzable desde dentro de Docker
     return Minio(
         endpoint=settings.MINIO_PUBLIC_ENDPOINT,
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
         secure=settings.MINIO_PUBLIC_USE_HTTPS,
         cert_check=settings.MINIO_CERT_CHECK,
+        region="us-east-1",
     )
 
 
@@ -70,13 +73,9 @@ def delete_from_minio(key: str):
 
 def generate_presigned_url(key: str, expires_seconds: int = 3600) -> str:
     from datetime import timedelta
-    # Generar con cliente interno (minio:9000 es alcanzable desde Docker)
-    # y reemplazar el host por el endpoint público para que el navegador pueda abrirlo
-    client = get_minio_client()
-    bucket = _get_bucket()
-    _ensure_bucket(client, bucket)
-    url = client.presigned_get_object(bucket, key, expires=timedelta(seconds=expires_seconds))
-    scheme = 'https' if settings.MINIO_PUBLIC_USE_HTTPS else 'http'
-    internal_prefix = f'http://{settings.MINIO_ENDPOINT}'
-    public_prefix = f'{scheme}://{settings.MINIO_PUBLIC_ENDPOINT}'
-    return url.replace(internal_prefix, public_prefix)
+    # Asegurar bucket con cliente interno (siempre alcanzable desde Docker)
+    _ensure_bucket(get_minio_client(), _get_bucket())
+    # Generar URL con cliente público (region pre-seteada evita el HTTP call de discovery)
+    return get_public_minio_client().presigned_get_object(
+        _get_bucket(), key, expires=timedelta(seconds=expires_seconds)
+    )
