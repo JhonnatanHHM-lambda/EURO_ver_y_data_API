@@ -21,7 +21,7 @@ jobs:
             set -e
             echo "▶ Actualizando código..."
             cd /root/Proyectos/Euro_ver_y_data/Euro_ver_y_data_API
-            git pull origin main
+            git pull origin master
 
             echo "▶ Reconstruyendo contenedores..."
             docker compose up --build -d
