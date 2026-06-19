@@ -42,8 +42,17 @@ class Contrato(models.Model):
         ('TERMINACION', 'Terminación'),
     ]
     DURACION_PRORROGA_CHOICES = [
-        ('3_MESES', '3 meses'),
-        ('6_MESES', '6 meses'),
+        ('1_MES',    '1 mes'),
+        ('2_MESES',  '2 meses'),
+        ('3_MESES',  '3 meses'),
+        ('4_MESES',  '4 meses'),
+        ('5_MESES',  '5 meses'),
+        ('6_MESES',  '6 meses'),
+        ('7_MESES',  '7 meses'),
+        ('8_MESES',  '8 meses'),
+        ('9_MESES',  '9 meses'),
+        ('10_MESES', '10 meses'),
+        ('11_MESES', '11 meses'),
         ('12_MESES', '12 meses'),
     ]
 

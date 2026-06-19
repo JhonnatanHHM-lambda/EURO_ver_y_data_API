@@ -358,16 +358,26 @@ def enviar_email_director_condiciones_listas(director, contrato):
         rows.append(('Duración', contrato.get_duracion_prorroga_display()))
         rows.append(('Sueldo', 'Se mantiene' if contrato.mantener_condiciones else f'${contrato.nuevo_sueldo:,.0f}'))
 
+    if es_prorroga:
+        accion_txt = 'GH notificará directamente al empleado.'
+        accion_plain = 'GH notificará directamente al empleado.'
+        btn_label = 'Ver en el panel'
+        pie_txt = 'Puedes consultar el estado del contrato en el panel de vencimientos.'
+    else:
+        accion_txt = 'Ya puedes notificarle directamente.'
+        accion_plain = 'Ya puedes notificar al empleado.'
+        btn_label = 'Notificar al empleado'
+        pie_txt = 'Ingresa al panel de contratos y usa el botón "Notificar al empleado" para enviarle la carta.'
+
     cuerpo = (
         _p(f'Hola, <strong style="color:#ffffff;">{director.nombres}</strong>', size=15, bottom=8)
         + _p(f'Gestión Humana ha definido las condiciones para la '
              f'<strong style="color:{color};">{tipo_display}</strong> del siguiente empleado. '
-             f'Ya puedes notificarle directamente.', bottom=4)
+             f'{accion_txt}', bottom=4)
         + _info_table(rows)
-        + _btn(panel, 'Notificar al empleado', color)
+        + _btn(panel, btn_label, color)
         + _divider()
-        + _p('Ingresa al panel de contratos y usa el botón "Notificar al empleado" para enviarle la carta.',
-             color='rgba(255,255,255,0.40)', size=11, bottom=0)
+        + _p(pie_txt, color='rgba(255,255,255,0.40)', size=11, bottom=0)
     )
 
     send_mail(
@@ -375,7 +385,7 @@ def enviar_email_director_condiciones_listas(director, contrato):
         message=(
             f'Hola {director.nombres},\n\n'
             f'Gestión Humana ha definido las condiciones para la {tipo_display} de '
-            f'{contrato.nombre_completo}. Ya puedes notificar al empleado.\n\n'
+            f'{contrato.nombre_completo}. {accion_plain}\n\n'
             f'Panel: {panel}\n\nInversiones Euro S.A.'
         ),
         from_email=settings.DEFAULT_FROM_EMAIL,

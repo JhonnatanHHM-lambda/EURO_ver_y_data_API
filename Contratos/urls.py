@@ -7,8 +7,9 @@ from .views.contratos_views import (
     ContratosListView, ContratoDetailView,
     ProrrogarContratoView, TerminarContratoView, SubirDocumentoAdicionalView,
     CondicionesGHView, NotificarEmpleadoView, CrearContratoDemoView,
+    ActualizarContactoView, ReenviarNotificacionView,
 )
-from .views.panel_views import PanelResumenView, AsignacionesSedView, EscanearSiesaView, ContratacionesView
+from .views.panel_views import PanelResumenView, AsignacionesSedView, EscanearSiesaView, ContratacionesView, ReporteContratacionesView
 
 urlpatterns = [
     # Públicas — acceso del empleado para firma (sin auth)
@@ -23,6 +24,7 @@ urlpatterns = [
     path('contratos/escanear/', EscanearSiesaView.as_view(), name='contratos-escanear'),
     path('contratos/crear-demo/', CrearContratoDemoView.as_view(), name='contratos-crear-demo'),
     path('contratos/contrataciones/', ContratacionesView.as_view(), name='contratos-contrataciones'),
+    path('contratos/contrataciones/reporte/', ReporteContratacionesView.as_view(), name='contratos-contrataciones-reporte'),
     path('contratos/asignaciones/', AsignacionesSedView.as_view(), name='contratos-asignaciones'),
     path('contratos/asignaciones/<int:pk>/', AsignacionesSedView.as_view(), name='contratos-asignaciones-detail'),
     path('contratos/<int:pk>/', ContratoDetailView.as_view(), name='contratos-detail'),
@@ -31,4 +33,6 @@ urlpatterns = [
     path('contratos/<int:pk>/condiciones/', CondicionesGHView.as_view(), name='contratos-condiciones'),
     path('contratos/<int:pk>/notificar-empleado/', NotificarEmpleadoView.as_view(), name='contratos-notificar-empleado'),
     path('contratos/<int:pk>/documentos/', SubirDocumentoAdicionalView.as_view(), name='contratos-documentos'),
+    path('contratos/<int:pk>/contacto/', ActualizarContactoView.as_view(), name='contratos-contacto'),
+    path('contratos/<int:pk>/reenviar-notificacion/', ReenviarNotificacionView.as_view(), name='contratos-reenviar-notificacion'),
 ]

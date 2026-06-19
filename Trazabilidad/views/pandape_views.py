@@ -149,7 +149,8 @@ class PandapeConfirmarView(APIView):
     @require_permission(['can_upload_excel'], app_label='Usuarios')
     def post(self, request):
         candidatos = request.data.get('candidatos', [])
-        sede_id = request.data.get('sede_id')
+        sede_id    = request.data.get('sede_id')
+        nombre_archivo = request.data.get('nombre_archivo', 'Reporte PandaPé')
 
         if not candidatos:
             return Response({'error': 'No hay candidatos para incorporar.'}, status=400)
@@ -160,6 +161,14 @@ class PandapeConfirmarView(APIView):
                 sede = Sede.objects.get(id=sede_id, estado=True)
             except Sede.DoesNotExist:
                 return Response({'error': 'Sede no encontrada.'}, status=404)
+
+        from Trazabilidad.models import CargaExcel
+        carga = CargaExcel.objects.create(
+            sede=sede,
+            nombre_archivo=nombre_archivo,
+            origen_datos='PANDAPE',
+            cargado_por=request.user,
+        )
 
         creados = omitidos = 0
         errores = []
@@ -192,10 +201,17 @@ class PandapeConfirmarView(APIView):
                     estado_candidato='HABILITADO',
                     fuente_carga='PANDAPE',
                     cargado_por=request.user,
+                    carga_excel=carga,
                 )
                 creados += 1
             except Exception as e:
                 errores.append({'documento_id': doc, 'error': str(e)})
+
+        carga.total_registros = creados + omitidos + len(errores)
+        carga.exitosos        = creados
+        carga.fallidos        = len(errores)
+        carga.errores         = errores
+        carga.save(update_fields=['total_registros', 'exitosos', 'fallidos', 'errores'])
 
         partes = [f'{creados} candidato(s) incorporado(s) a la BD centralizada.']
         if omitidos:
@@ -205,6 +221,7 @@ class PandapeConfirmarView(APIView):
             'creados': creados,
             'omitidos': omitidos,
             'errores': errores,
+            'carga_id': carga.id,
         })
 
 

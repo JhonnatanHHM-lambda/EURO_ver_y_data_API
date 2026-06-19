@@ -51,9 +51,18 @@ _ST_TITULO_OTROSI = ParagraphStyle(
 )
 
 _DURACION_TEXTO = {
-    '3_MESES':  'Tres (3)',
-    '6_MESES':  'Seis (6)',
-    '12_MESES': 'Doce (12)',
+    '1_MES':    'Un (1) mes',
+    '2_MESES':  'Dos (2) meses',
+    '3_MESES':  'Tres (3) meses',
+    '4_MESES':  'Cuatro (4) meses',
+    '5_MESES':  'Cinco (5) meses',
+    '6_MESES':  'Seis (6) meses',
+    '7_MESES':  'Siete (7) meses',
+    '8_MESES':  'Ocho (8) meses',
+    '9_MESES':  'Nueve (9) meses',
+    '10_MESES': 'Diez (10) meses',
+    '11_MESES': 'Once (11) meses',
+    '12_MESES': 'Doce (12) meses',
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -221,7 +230,7 @@ def _parrafos_prorroga(contrato) -> list:
         Paragraph('&nbsp;', _ST_SMALL),
         Paragraph(
             f'<b>PRIMERA: Duración del Contrato.</b> Las Partes convienen prorrogar la duración '
-            f'del Contrato por un término adicional de {duracion_txt} meses es decir, hasta el '
+            f'del Contrato por un término adicional de {duracion_txt}, es decir, hasta el '
             f'<b>{fecha_fin}</b>, Contrato que no será prorrogado y por lo tanto en dicha fecha '
             f'terminará definitivamente sin necesidad de ningún preaviso adicional al que se '
             f'establece y declara en la presente cláusula.',
@@ -230,20 +239,7 @@ def _parrafos_prorroga(contrato) -> list:
         Paragraph('&nbsp;', _ST_SMALL),
     ]
 
-    numero_sig = 2
-    if not contrato.mantener_condiciones and contrato.nuevo_sueldo:
-        sueldo_fmt = _fmt_sueldo(contrato.nuevo_sueldo)
-        parrafos += [
-            Paragraph(
-                f'<b>SEGUNDA: Sueldo.</b> La nueva asignación salarial mensual será de '
-                f'<b>{sueldo_fmt}</b>.',
-                _ST_NORMAL,
-            ),
-            Paragraph('&nbsp;', _ST_SMALL),
-        ]
-        numero_sig = 3
-
-    clausula_vigencia = {2: 'SEGUNDA', 3: 'TERCERA'}[numero_sig]
+    clausula_vigencia = 'SEGUNDA'
     parrafos += [
         Paragraph(
             f'<b>{clausula_vigencia}: Vigencia.</b> En lo no modificado por el presente otrosí, '

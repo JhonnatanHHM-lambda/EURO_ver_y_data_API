@@ -84,6 +84,72 @@ class ContratoDetailView(APIView):
         return Response(ContratoSerializer(contrato).data)
 
 
+class ActualizarContactoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            contrato = Contrato.objects.get(pk=pk)
+        except Contrato.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        update_fields = []
+        if 'email' in request.data:
+            contrato.email = (request.data['email'] or '').strip()
+            update_fields.append('email')
+        if 'celular' in request.data:
+            contrato.celular = (request.data['celular'] or '').strip()
+            update_fields.append('celular')
+
+        if not update_fields:
+            return Response({'error': 'Nada que actualizar.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        contrato.save(update_fields=update_fields)
+        return Response({'email': contrato.email, 'celular': contrato.celular})
+
+
+class ReenviarNotificacionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    _TIPO_A_ESTADO_PENDIENTE = {
+        'NO_PRORROGA': 'PENDIENTE_FIRMA_NO_PRORROGA',
+        'PRORROGA':    'PENDIENTE_FIRMA_PRORROGA',
+        'TERMINACION': 'PENDIENTE_FIRMA_TERMINACION',
+    }
+
+    def post(self, request, pk):
+        # Siempre recarga desde BD para tener email/celular actualizados
+        try:
+            contrato = Contrato.objects.get(pk=pk)
+        except Contrato.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if not contrato.email and not contrato.celular:
+            return Response(
+                {'error': 'El empleado no tiene email ni celular registrado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        update_fields = ['token_firma', 'token_usado', 'token_expira_en']
+
+        # Si el proceso estaba bloqueado, resetear a PENDIENTE_FIRMA_* para que el link funcione
+        if contrato.estado in ('SIN_CANAL_CONTACTO', 'ERROR_NOTIFICACION'):
+            nuevo_estado = self._TIPO_A_ESTADO_PENDIENTE.get(contrato.tipo_carta)
+            if nuevo_estado:
+                contrato.estado = nuevo_estado
+                update_fields.append('estado')
+
+        contrato.token_firma = uuid.uuid4()
+        contrato.token_usado = False
+        contrato.token_expira_en = timezone.now() + timedelta(days=7)
+        contrato.save(update_fields=update_fields)
+
+        from ..tasks import enviar_notificacion_empleado_task
+        enviar_notificacion_empleado_task.delay(contrato.id)
+
+        return Response({'mensaje': 'Notificación reenviada al empleado.'})
+
+
 _TIPO_LABELS = {'NO_PRORROGA': 'No Prorroga', 'PRORROGA': 'Prorroga', 'TERMINACION': 'Terminacion'}
 
 
@@ -239,17 +305,16 @@ class CondicionesGHView(APIView):
             )
 
         if contrato.tipo_carta == 'PRORROGA':
-            duracion = request.data.get('duracion_prorroga')
-            if duracion not in ['3_MESES', '6_MESES', '12_MESES']:
-                return Response({'error': 'Duración inválida.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                meses = int(request.data.get('meses_prorroga', 0))
+            except (TypeError, ValueError):
+                meses = 0
+            if not 1 <= meses <= 12:
+                return Response({'error': 'Duración inválida. Elige entre 1 y 12 meses.'}, status=status.HTTP_400_BAD_REQUEST)
             from dateutil.relativedelta import relativedelta
-            meses = {'3_MESES': 3, '6_MESES': 6, '12_MESES': 12}[duracion]
-            contrato.duracion_prorroga = duracion
-            mantener = request.data.get('mantener_condiciones', True)
-            if isinstance(mantener, str):
-                mantener = mantener.lower() not in ('false', '0', 'no')
-            contrato.mantener_condiciones = mantener
-            contrato.nuevo_sueldo = request.data.get('nuevo_sueldo') if not mantener else None
+            contrato.duracion_prorroga = '1_MES' if meses == 1 else f'{meses}_MESES'
+            contrato.mantener_condiciones = True
+            contrato.nuevo_sueldo = None
             contrato.fecha_fin_prorroga = contrato.fecha_finalizacion + relativedelta(months=meses)
 
         elif contrato.tipo_carta == 'TERMINACION':
@@ -288,10 +353,15 @@ class CondicionesGHView(APIView):
         if director:
             from Usuarios.models import NotificacionAdmin
             from ..utils.notificaciones import enviar_email_director_condiciones_listas
+            cuerpo_notif = (
+                'GH ha definido las condiciones de prórroga. GH notificará directamente al empleado.'
+                if contrato.tipo_carta == 'PRORROGA'
+                else 'GH ha definido las condiciones. Ya puedes notificar al empleado.'
+            )
             NotificacionAdmin.objects.create(
                 tipo='condiciones_gh_listas',
                 titulo=f'Condiciones listas — {contrato.nombre_completo}',
-                cuerpo='GH ha definido las condiciones. Ya puedes notificar al empleado.',
+                cuerpo=cuerpo_notif,
                 contrato=contrato,
                 usuario=director,
             )

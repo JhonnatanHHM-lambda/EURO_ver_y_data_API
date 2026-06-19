@@ -1,0 +1,32 @@
+name: 🚀 Deploy API — Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: SSH Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 300s
+          script: |
+            set -e
+            echo "▶ Actualizando código..."
+            cd /root/Proyectos/Euro_ver_y_data/Euro_ver_y_data_API
+            git pull origin main
+
+            echo "▶ Reconstruyendo contenedores..."
+            docker compose up --build -d
+
+            echo "▶ Limpiando imágenes huérfanas..."
+            docker image prune -f
+
+            echo "✅ Deploy API completado."
