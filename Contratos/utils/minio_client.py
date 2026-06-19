@@ -70,6 +70,13 @@ def delete_from_minio(key: str):
 
 def generate_presigned_url(key: str, expires_seconds: int = 3600) -> str:
     from datetime import timedelta
-    client = get_public_minio_client()
+    # Generar con cliente interno (minio:9000 es alcanzable desde Docker)
+    # y reemplazar el host por el endpoint público para que el navegador pueda abrirlo
+    client = get_minio_client()
     bucket = _get_bucket()
-    return client.presigned_get_object(bucket, key, expires=timedelta(seconds=expires_seconds))
+    _ensure_bucket(client, bucket)
+    url = client.presigned_get_object(bucket, key, expires=timedelta(seconds=expires_seconds))
+    scheme = 'https' if settings.MINIO_PUBLIC_USE_HTTPS else 'http'
+    internal_prefix = f'http://{settings.MINIO_ENDPOINT}'
+    public_prefix = f'{scheme}://{settings.MINIO_PUBLIC_ENDPOINT}'
+    return url.replace(internal_prefix, public_prefix)
