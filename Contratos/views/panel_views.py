@@ -80,6 +80,13 @@ class ContratacionesView(APIView):
             from django.db.models import Q
             qs = qs.filter(Q(nombre_completo__icontains=search) | Q(documento_id__icontains=search))
 
+        fecha_desde = request.query_params.get('fecha_desde', '').strip()
+        fecha_hasta = request.query_params.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(fecha_firma__date__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(fecha_firma__date__lte=fecha_hasta)
+
         empleados = {}
         for c in qs:
             key = c.documento_id
@@ -114,6 +121,153 @@ class ContratacionesView(APIView):
             'total_empleados':  len(lista),
             'total_contratos':  sum(len(e['contratos']) for e in lista),
         })
+
+
+class ReporteContratacionesView(APIView):
+    """Genera y devuelve un Excel con los contratos firmados según los filtros activos."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        from io import BytesIO
+        from django.http import HttpResponse
+        import pytz
+
+        qs = (
+            Contrato.objects
+            .filter(estado='FIRMADO')
+            .select_related('sede')
+            .prefetch_related('documentos_adicionales')
+            .order_by('nombre_completo', '-fecha_firma')
+        )
+
+        sedes_asignadas = AsignacionCentro.objects.filter(
+            usuario=request.user, activo=True
+        ).values_list('sede', flat=True)
+        if sedes_asignadas.exists():
+            qs = qs.filter(sede__in=sedes_asignadas)
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(nombre_completo__icontains=search) | Q(documento_id__icontains=search))
+
+        fecha_desde = request.query_params.get('fecha_desde', '').strip()
+        fecha_hasta = request.query_params.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(fecha_firma__date__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(fecha_firma__date__lte=fecha_hasta)
+
+        # ── estilos ──────────────────────────────────────────────────
+        H_FILL  = PatternFill(start_color='1D4ED8', end_color='1D4ED8', fill_type='solid')
+        H_FONT  = Font(color='FFFFFF', bold=True, size=11)
+        H_ALIGN = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        EVEN_FILL = PatternFill(start_color='EFF6FF', end_color='EFF6FF', fill_type='solid')
+        thin   = Side(style='thin', color='CBD5E1')
+        BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        HEADERS = [
+            ('Nombre completo',      35),
+            ('Tipo doc.',            10),
+            ('Documento',            18),
+            ('Tipo carta',           16),
+            ('Cargo',                28),
+            ('Sede',                 22),
+            ('Inicio contrato',      16),
+            ('Fecha finalización',   18),
+            ('Duración prórroga',    16),
+            ('Fecha fin prórroga',   16),
+            ('Fecha firma',          22),
+            ('Email',                30),
+            ('Celular',              15),
+            ('Docs. adicionales',    14),
+        ]
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Contrataciones'
+        ws.freeze_panes = 'A2'
+        ws.row_dimensions[1].height = 28
+
+        for col, (h, w) in enumerate(HEADERS, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.fill   = H_FILL
+            cell.font   = H_FONT
+            cell.alignment = H_ALIGN
+            cell.border = BORDER
+            ws.column_dimensions[get_column_letter(col)].width = w
+
+        TIPO_CARTA   = {'NO_PRORROGA': 'Sin prórroga', 'PRORROGA': 'Prórroga', 'TERMINACION': 'Terminación'}
+        DUR_LABELS   = dict(Contrato.DURACION_PRORROGA_CHOICES)
+        tz_co        = pytz.timezone('America/Bogota')
+
+        def fmt_date(d):
+            return d.strftime('%d/%m/%Y') if d else ''
+
+        def fmt_dt(dt):
+            if not dt:
+                return ''
+            return dt.astimezone(tz_co).strftime('%d/%m/%Y %H:%M')
+
+        for row_n, c in enumerate(qs, 2):
+            docs_count = c.documentos_adicionales.count()
+            vals = [
+                c.nombre_completo,
+                c.tipo_documento,
+                c.documento_id,
+                TIPO_CARTA.get(c.tipo_carta, c.tipo_carta),
+                c.cargo or '',
+                c.sede.nombre if c.sede else '',
+                fmt_date(c.fecha_inicio_contrato),
+                fmt_date(c.fecha_finalizacion),
+                DUR_LABELS.get(c.duracion_prorroga, '') if c.duracion_prorroga else '',
+                fmt_date(c.fecha_fin_prorroga),
+                fmt_dt(c.fecha_firma),
+                c.email or '',
+                c.celular or '',
+                docs_count,
+            ]
+            fill = EVEN_FILL if row_n % 2 == 0 else None
+            for col, val in enumerate(vals, 1):
+                cell = ws.cell(row=row_n, column=col, value=val)
+                cell.border    = BORDER
+                cell.alignment = Alignment(vertical='center')
+                if fill:
+                    cell.fill = fill
+
+        # ── hoja de metadatos ────────────────────────────────────────
+        ws_m = wb.create_sheet('Filtros')
+        ws_m.column_dimensions['A'].width = 22
+        ws_m.column_dimensions['B'].width = 28
+        bold = Font(bold=True)
+        for r, (k, v) in enumerate([
+            ('Búsqueda', search or 'Ninguna'),
+            ('Fecha desde', fecha_desde or 'Sin filtro'),
+            ('Fecha hasta', fecha_hasta or 'Sin filtro'),
+            ('Total registros', qs.count()),
+        ], 1):
+            ws_m.cell(row=r, column=1, value=k).font = bold
+            ws_m.cell(row=r, column=2, value=v)
+
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        if fecha_desde and fecha_hasta:
+            nombre_archivo = f'contrataciones_{fecha_desde}_a_{fecha_hasta}.xlsx'
+        else:
+            from datetime import date as dt_date
+            nombre_archivo = f'contrataciones_{dt_date.today().isoformat()}.xlsx'
+
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
+        return response
 
 
 class AsignacionesSedView(APIView):
