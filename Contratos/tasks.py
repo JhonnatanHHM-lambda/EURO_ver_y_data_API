@@ -27,7 +27,7 @@ def revisar_contratos_60_dias():
         existe = Contrato.objects.filter(
             documento_id=emp['documento_id'],
             fecha_finalizacion=emp['fecha_finalizacion'],
-        ).exists()
+        ).exclude(pdf_carta_key='').exists()
         if existe:
             continue
 

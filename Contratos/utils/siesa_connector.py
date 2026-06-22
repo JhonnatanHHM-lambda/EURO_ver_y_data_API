@@ -49,6 +49,7 @@ _SQL = """
     INNER JOIN w0550_contratos c           ON e.c0540_rowid_tercero   = c.c0550_rowid_tercero
     LEFT  JOIN w0763_gh01_cargos g         ON c.c0550_rowid_cargo     = g.c0763_rowid
     WHERE c.c0550_ind_termino_contrato = 1
+      AND c.c0550_ind_estado = 1
       AND c.c0550_fecha_contrato_hasta >= ?
       AND c.c0550_fecha_contrato_hasta <= ?
     ORDER BY c.c0550_fecha_contrato_hasta
