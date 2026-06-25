@@ -128,15 +128,16 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Email
+# Email — Microsoft Graph API (Office 365)
 if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS')
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL_USER')
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'EURO_ver_y_data.email_backends.MicrosoftGraphEmailBackend'
+
+DEFAULT_FROM_EMAIL = 'Notificaciones@lambdaanalytics.co'
+AZURE_TENANT_ID    = os.getenv('AZURE_TENANT_ID', '')
+AZURE_CLIENT_ID    = os.getenv('AZURE_CLIENT_ID', '')
+AZURE_SECRET_KEY   = os.getenv('AZURE_SECRET_KEY', '')
 
 # Celery
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
