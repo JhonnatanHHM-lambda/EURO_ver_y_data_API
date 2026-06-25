@@ -172,6 +172,83 @@ class EventoContrato(models.Model):
         return f'{self.tipo_evento} — {self.contrato}'
 
 
+class FirmaGH(models.Model):
+    """Firma digital del GH. Máximo una en el sistema."""
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='firma_gh',
+        verbose_name='Usuario GH'
+    )
+    firma_imagen = models.TextField(verbose_name='Imagen firma (base64)')
+    habilitada = models.BooleanField(default=True, verbose_name='Habilitada para uso')
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'contratos_firma_gh'
+        verbose_name = 'Firma GH'
+
+    def __str__(self):
+        return f'Firma GH — {self.usuario}'
+
+
+class FirmaProvisional(models.Model):
+    """Firma provisional activa cuando el GH desactiva la suya. Máximo una."""
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='firma_provisional',
+        verbose_name='Usuario provisional'
+    )
+    firma_imagen = models.TextField(verbose_name='Imagen firma (base64)')
+    autorizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='firmas_provisionales_autorizadas',
+        verbose_name='Autorizado por'
+    )
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'contratos_firma_provisional'
+        verbose_name = 'Firma provisional'
+
+    def __str__(self):
+        return f'Firma provisional — {self.usuario}'
+
+
+class RegistroFirmaEmpleador(models.Model):
+    """Auditoría: registra qué usuario firmó como empleador en cada documento generado."""
+    contrato = models.ForeignKey(
+        Contrato,
+        on_delete=models.CASCADE,
+        related_name='registros_firma_empleador'
+    )
+    tipo_carta = models.CharField(max_length=20)
+    usuario_empleador = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='documentos_como_empleador'
+    )
+    nombre_empleador = models.CharField(max_length=200)
+    cedula_empleador = models.CharField(max_length=30)
+    firma_imagen_snapshot = models.TextField()
+    es_provisional = models.BooleanField(default=False)
+    fecha_generacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'contratos_registro_firma_empleador'
+        ordering = ['-fecha_generacion']
+        verbose_name = 'Registro firma empleador'
+
+    def __str__(self):
+        return f'{self.nombre_empleador} — {self.contrato} ({self.tipo_carta})'
+
+
 class AsignacionCentro(models.Model):
     """Asocia un Usuario a una Sede con rol Director o GH para el módulo de contratos."""
     ROL_CHOICES = [

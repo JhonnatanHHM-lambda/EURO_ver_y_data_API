@@ -77,6 +77,7 @@ class Usuario(BaseModel, AbstractBaseUser, PermissionsMixin):
             ('can_escanear_siesa',            'Puede ejecutar consulta manual de contratos desde SIESA'),
             ('can_manage_asignaciones',       'Puede gestionar asignaciones de director/GH a sedes'),
             ('can_view_contrataciones',       'Puede ver el historial de contrataciones y documentos firmados'),
+            ('can_manage_firma_gh',           'Puede gestionar la firma digital del empleador'),
         ]
         indexes = [
             models.Index(fields=['correo']),

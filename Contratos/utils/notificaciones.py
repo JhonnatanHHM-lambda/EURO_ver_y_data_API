@@ -300,6 +300,75 @@ def enviar_recordatorio_decision(director, contrato):
     )
 
 
+def enviar_recordatorio_decision_digest(director, contratos: list):
+    """Un solo correo al director con TODOS sus contratos pendientes de decisión."""
+    panel = _panel_url()
+    n = len(contratos)
+
+    filas_html = ''
+    for c in contratos:
+        dias = (c.fecha_finalizacion - c.fecha_finalizacion.today()).days if hasattr(c.fecha_finalizacion, 'today') else '—'
+        try:
+            from django.utils import timezone as _tz
+            dias = (c.fecha_finalizacion - _tz.localdate()).days
+        except Exception:
+            dias = '—'
+        color_dias = '#ef4444' if isinstance(dias, int) and dias <= 5 else 'rgba(255,255,255,0.75)'
+        filas_html += (
+            '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">'
+            f'<td style="padding:9px 8px;color:rgba(255,255,255,0.85);font-size:12px;">{c.nombre_completo}</td>'
+            f'<td style="padding:9px 8px;color:rgba(255,255,255,0.55);font-size:11px;">{c.cargo or "—"}</td>'
+            f'<td style="padding:9px 8px;color:{color_dias};font-size:12px;font-weight:600;white-space:nowrap;">'
+            f'{_fmt_fecha(c.fecha_finalizacion)}</td>'
+            '</tr>'
+        )
+
+    tabla_contratos = (
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%" '
+        'style="margin:16px 0;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);">'
+        '<thead><tr style="background:rgba(255,255,255,0.08);">'
+        '<th style="padding:8px;text-align:left;color:rgba(255,255,255,0.40);font-size:11px;font-weight:600;">Empleado</th>'
+        '<th style="padding:8px;text-align:left;color:rgba(255,255,255,0.40);font-size:11px;font-weight:600;">Cargo</th>'
+        '<th style="padding:8px;text-align:left;color:rgba(255,255,255,0.40);font-size:11px;font-weight:600;">Vence</th>'
+        '</tr></thead>'
+        f'<tbody>{filas_html}</tbody>'
+        '</table>'
+    )
+
+    cuerpo = (
+        _p(f'Hola, <strong style="color:#ffffff;">{director.nombres}</strong>', size=15, bottom=8)
+        + _p(
+            f'Tienes <strong style="color:#f59e0b;">{n} contrato{"s" if n != 1 else ""}</strong> '
+            f'pendiente{"s" if n != 1 else ""} de decisión.',
+            bottom=4,
+        )
+        + tabla_contratos
+        + _btn(panel, 'Ir al panel de contratos', '#27348B')
+        + _divider()
+        + _p(
+            'Ingresa al panel y toma una decisión (prórroga o terminación) para cada contrato.',
+            color='rgba(255,255,255,0.40)', size=11, bottom=0,
+        )
+    )
+
+    plain = (
+        f'Hola {director.nombres},\n\n'
+        f'Tienes {n} contrato{"s" if n != 1 else ""} pendiente{"s" if n != 1 else ""} de decisión:\n\n'
+        + ''.join(f'- {c.nombre_completo} ({c.cargo or "—"}) vence {c.fecha_finalizacion}\n' for c in contratos)
+        + f'\nPanel: {panel}\n\nInversiones Euro S.A.'
+    )
+
+    send_mail(
+        subject=f'[Euro Supermercados] {n} contrato{"s" if n != 1 else ""} pendiente{"s" if n != 1 else ""} de decisión',
+        message=plain,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[director.correo],
+        html_message=_html_email(cuerpo),
+        fail_silently=False,
+    )
+    logger.info(f'[CORREO] Digest decisiones → director {director.correo} ({n} contratos)')
+
+
 def enviar_email_gh_decision_director(gh_usuario, contrato, tipo_decision):
     """Notifica a GH que el director tomó decisión de prorrogar o terminar."""
     panel = _panel_url()

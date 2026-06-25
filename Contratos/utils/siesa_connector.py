@@ -49,6 +49,7 @@ _SQL = """
     INNER JOIN w0550_contratos c           ON e.c0540_rowid_tercero   = c.c0550_rowid_tercero
     LEFT  JOIN w0763_gh01_cargos g         ON c.c0550_rowid_cargo     = g.c0763_rowid
     WHERE c.c0550_ind_termino_contrato = 1
+      AND c.c0550_ind_estado = 1
       AND c.c0550_fecha_contrato_hasta >= ?
       AND c.c0550_fecha_contrato_hasta <= ?
     ORDER BY c.c0550_fecha_contrato_hasta
@@ -64,15 +65,17 @@ def _to_date(v):
 def _row_to_dict(row) -> dict:
     tipo_raw = (row.tipo_documento_raw or "").strip()
     fecha_fin = _to_date(row.fecha_fin)
+    fecha_inicio = _to_date(row.fecha_inicio)
     return {
-        "tipo_documento":    _TIPO_DOC.get(tipo_raw, tipo_raw),
-        "documento_id":      (row.documento or "").strip(),
-        "nombre_completo":   (row.nombre_completo or "").strip(),
-        "cargo":             (row.cargo or "").strip(),
-        "centro_operacion":  (row.centro_op_codigo or "").strip(),
-        "fecha_finalizacion": fecha_fin,
-        "celular":           (row.celular or "").strip(),
-        "email":             EMAIL_OVERRIDE,
+        "tipo_documento":       _TIPO_DOC.get(tipo_raw, tipo_raw),
+        "documento_id":         (row.documento or "").strip(),
+        "nombre_completo":      (row.nombre_completo or "").strip(),
+        "cargo":                (row.cargo or "").strip(),
+        "centro_operacion":     (row.centro_op_codigo or "").strip(),
+        "fecha_inicio_contrato": fecha_inicio,
+        "fecha_finalizacion":   fecha_fin,
+        "celular":              (row.celular or "").strip(),
+        "email":                EMAIL_OVERRIDE,
     }
 
 

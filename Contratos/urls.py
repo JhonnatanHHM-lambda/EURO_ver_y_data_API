@@ -10,6 +10,11 @@ from .views.contratos_views import (
     ActualizarContactoView, ReenviarNotificacionView,
 )
 from .views.panel_views import PanelResumenView, AsignacionesSedView, EscanearSiesaView, ContratacionesView, ReporteContratacionesView
+from .views.firma_gh_views import (
+    FirmaGHView, FirmaGHToggleView, FirmaProvisionaView,
+    RegistroFirmaEmpleadorListView, ReporteRegistroFirmaView,
+    UsuariosParaProvisionaView,
+)
 
 urlpatterns = [
     # Públicas — acceso del empleado para firma (sin auth)
@@ -35,4 +40,11 @@ urlpatterns = [
     path('contratos/<int:pk>/documentos/', SubirDocumentoAdicionalView.as_view(), name='contratos-documentos'),
     path('contratos/<int:pk>/contacto/', ActualizarContactoView.as_view(), name='contratos-contacto'),
     path('contratos/<int:pk>/reenviar-notificacion/', ReenviarNotificacionView.as_view(), name='contratos-reenviar-notificacion'),
+    # Firma GH (empleador)
+    path('contratos/firma-gh/usuarios/', UsuariosParaProvisionaView.as_view(), name='firma-gh-usuarios'),
+    path('contratos/firma-gh/', FirmaGHView.as_view(), name='firma-gh'),
+    path('contratos/firma-gh/toggle/', FirmaGHToggleView.as_view(), name='firma-gh-toggle'),
+    path('contratos/firma-gh/provisional/', FirmaProvisionaView.as_view(), name='firma-gh-provisional'),
+    path('contratos/firma-gh/registros/', RegistroFirmaEmpleadorListView.as_view(), name='firma-gh-registros'),
+    path('contratos/firma-gh/registros/reporte/', ReporteRegistroFirmaView.as_view(), name='firma-gh-registros-reporte'),
 ]
