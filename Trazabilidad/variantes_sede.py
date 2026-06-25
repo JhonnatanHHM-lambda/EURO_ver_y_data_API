@@ -16,178 +16,178 @@ def norm(s):
 
 
 # ── Catálogo canónico ─────────────────────────────────────────────────────────
+# Códigos = códigos SIESA (c0550_id_co) para consistencia con el módulo Contratos
 SEDES_CANONICAS = [
     # Tiendas EURO — área metropolitana Medellín
-    {'codigo': 'EUR-FRONTERA',     'nombre': 'Euro Frontera',         'ciudad': 'Itagüí'},
-    {'codigo': 'EUR-MAYORISTA',    'nombre': 'Euro Mayorista',        'ciudad': 'Medellín'},
-    {'codigo': 'EUR-FLORIDA',      'nombre': 'Euro Florida',          'ciudad': 'Medellín'},
-    {'codigo': 'EUR-LAURELES',     'nombre': 'Euro Laureles',         'ciudad': 'Medellín'},
-    {'codigo': 'EUR-BERNAL',       'nombre': 'Euro Los Bernal',       'ciudad': 'Medellín'},
-    {'codigo': 'EUR-SABANETA',     'nombre': 'Euro Sabaneta',         'ciudad': 'Sabaneta'},
-    {'codigo': 'EUR-GUADALCANAL',  'nombre': 'Euro Guadalcanal',      'ciudad': 'Medellín'},
-    {'codigo': 'EUR-PALMAS',       'nombre': 'Euro Palmas',           'ciudad': 'Medellín'},
-    {'codigo': 'EUR-NIQUIA',       'nombre': 'Euro Niquia',           'ciudad': 'Bello'},
-    {'codigo': 'EUR-ITAGUI',       'nombre': 'Euro Itagüí',           'ciudad': 'Itagüí'},
-    {'codigo': 'EUR-BARBOSA',      'nombre': 'Euro Barbosa',          'ciudad': 'Barbosa'},
-    {'codigo': 'EUR-MARINILLA',    'nombre': 'Euro Marinilla',        'ciudad': 'Marinilla'},
-    {'codigo': 'EUR-BELLO',        'nombre': 'Euro Bello',            'ciudad': 'Bello'},
-    {'codigo': 'EUR-CASTILLA',     'nombre': 'Euro Castilla',         'ciudad': 'Medellín'},
-    {'codigo': 'EUR-LLANOGRANDE',  'nombre': 'Euro Llanogrande',      'ciudad': 'Rionegro'},
-    {'codigo': 'EUR-ARKADIA',      'nombre': 'Euro Arkadia',          'ciudad': 'Medellín'},
-    {'codigo': 'EUR-TERRACINA',    'nombre': 'Euro Terracina',        'ciudad': 'Envigado'},
-    {'codigo': 'EUR-MURANO',       'nombre': 'Euro Murano',           'ciudad': 'Envigado'},
-    {'codigo': 'EUR-MIXY',         'nombre': 'Euro Mixy',             'ciudad': 'Medellín'},
-    {'codigo': 'EUR-CARNAVAL',     'nombre': 'Euro Carnaval',         'ciudad': 'Medellín'},
-    {'codigo': 'EUR-INFERIOR',     'nombre': 'Euro La Inferior',      'ciudad': 'Medellín'},
-    {'codigo': 'EUR-GRANMANZANA',  'nombre': 'Euro Gran Manzana',     'ciudad': 'Medellín'},
+    {'codigo': 'FRO', 'nombre': 'Euro Frontera',         'ciudad': 'Itagüí'},
+    {'codigo': 'MAY', 'nombre': 'Euro Mayorista',        'ciudad': 'Medellín'},
+    {'codigo': 'FLO', 'nombre': 'Euro Florida',          'ciudad': 'Medellín'},
+    {'codigo': 'LAU', 'nombre': 'Euro Laureles',         'ciudad': 'Medellín'},
+    {'codigo': 'LOB', 'nombre': 'Euro Los Bernal',       'ciudad': 'Medellín'},
+    {'codigo': 'SAB', 'nombre': 'Euro Sabaneta',         'ciudad': 'Sabaneta'},
+    {'codigo': 'GUA', 'nombre': 'Euro Guadalcanal',      'ciudad': 'Medellín'},
+    {'codigo': 'VEG', 'nombre': 'Euro Palmas',           'ciudad': 'Medellín'},
+    {'codigo': 'NIQ', 'nombre': 'Euro Niquia',           'ciudad': 'Bello'},
+    {'codigo': 'ITA', 'nombre': 'Euro Itagüí',           'ciudad': 'Itagüí'},
+    {'codigo': 'BAR', 'nombre': 'Euro Barbosa',          'ciudad': 'Barbosa'},
+    {'codigo': 'MAR', 'nombre': 'Euro Marinilla',        'ciudad': 'Marinilla'},
+    {'codigo': 'BEL', 'nombre': 'Euro Bello',            'ciudad': 'Bello'},
+    {'codigo': 'ESC', 'nombre': 'Euro Castilla',         'ciudad': 'Medellín'},
+    {'codigo': 'LLA', 'nombre': 'Euro Llanogrande',      'ciudad': 'Rionegro'},
+    {'codigo': 'ACA', 'nombre': 'Euro Arkadia',          'ciudad': 'Medellín'},
+    {'codigo': 'TER', 'nombre': 'Euro Terracina',        'ciudad': 'Envigado'},
+    {'codigo': 'MUR', 'nombre': 'Euro Murano',           'ciudad': 'Envigado'},
+    {'codigo': 'MIX', 'nombre': 'Euro Mixy',             'ciudad': 'Medellín'},
+    {'codigo': 'CAR', 'nombre': 'Euro Carnaval',         'ciudad': 'Medellín'},
+    {'codigo': 'SAL', 'nombre': 'Euro La Inferior',      'ciudad': 'Medellín'},
+    {'codigo': 'MAN', 'nombre': 'Euro Gran Manzana',     'ciudad': 'Medellín'},
     # Montería
-    {'codigo': 'EUR-MONTERIA',     'nombre': 'Euro Montería',         'ciudad': 'Montería'},
-    {'codigo': 'EUR-NTR-MONTERIA', 'nombre': 'Euro Nuestro Montería', 'ciudad': 'Montería'},
+    {'codigo': 'MON', 'nombre': 'Euro Montería',         'ciudad': 'Montería'},
+    {'codigo': 'NUM', 'nombre': 'Euro Nuestro Montería', 'ciudad': 'Montería'},
     # Tiendas BIG
-    {'codigo': 'BIG-MAYORISTA',    'nombre': 'Big Mayorista',         'ciudad': 'Medellín'},
-    {'codigo': 'BIG-CASTILLA',     'nombre': 'Big Castilla',          'ciudad': 'Medellín'},
-    {'codigo': 'BIG-LAURELES',     'nombre': 'Big Laureles',          'ciudad': 'Medellín'},
-    {'codigo': 'BIG-CALDAS',       'nombre': 'Big Caldas',            'ciudad': 'Caldas'},
-    {'codigo': 'BIG-CRISTOBAL',    'nombre': 'Big Cristóbal',         'ciudad': 'Medellín'},
-    {'codigo': 'BIG-PALACE',       'nombre': 'Big Palace',            'ciudad': 'Medellín'},
+    {'codigo': 'BIG',          'nombre': 'Big Mayorista',    'ciudad': 'Medellín'},
+    {'codigo': 'BIG-CASTILLA', 'nombre': 'Big Castilla',     'ciudad': 'Medellín'},
+    {'codigo': 'LAL',          'nombre': 'Big Laureles',     'ciudad': 'Medellín'},
+    {'codigo': 'CAL',          'nombre': 'Big Caldas',       'ciudad': 'Caldas'},
+    {'codigo': 'CRI',          'nombre': 'Big Cristóbal',    'ciudad': 'Medellín'},
+    {'codigo': 'PAL',          'nombre': 'Big Palace',       'ciudad': 'Medellín'},
     # Operaciones
-    {'codigo': 'OPS-CEDI',         'nombre': 'CEDI',                  'ciudad': 'Medellín'},
-    {'codigo': 'OPS-DESPOSTE',     'nombre': 'Planta de Desposte',    'ciudad': 'Medellín'},
-    {'codigo': 'OPS-ADMIN',        'nombre': 'Administración',        'ciudad': 'Medellín'},
-    {'codigo': 'OPS-ACOPIO',       'nombre': 'Acopio',                'ciudad': 'Medellín'},
+    {'codigo': 'OPS-ACOPIO',   'nombre': 'Acopio',            'ciudad': 'Medellín'},
+    {'codigo': 'CED',          'nombre': 'CEDI',              'ciudad': 'Medellín'},
+    {'codigo': 'DES',          'nombre': 'Planta de Desposte', 'ciudad': 'Medellín'},
+    {'codigo': 'ADM',          'nombre': 'Administración',    'ciudad': 'Medellín'},
     # Omnicanal — domicilios
-    {'codigo': 'OMN',              'nombre': 'Omnicanal',             'ciudad': 'Medellín'},
+    {'codigo': 'OMN', 'nombre': 'Omnicanal', 'ciudad': 'Medellín'},
 ]
 
 # ── Variantes → código canónico ────────────────────────────────────────────────
 # Clave: valor normalizado (norm()), Valor: código de sede
 _VARIANTES_RAW = {
     # EURO FRONTERA
-    'EURO FRONTERA': 'EUR-FRONTERA',
-    'FRONTERA': 'EUR-FRONTERA',
-    'EURO FRONTERO': 'EUR-FRONTERA',       # typo
-    'EURO PALMAS (FRONTERA)': 'EUR-FRONTERA',
+    'EURO FRONTERA': 'FRO',
+    'FRONTERA': 'FRO',
+    'EURO FRONTERO': 'FRO',       # typo
+    'EURO PALMAS (FRONTERA)': 'FRO',
 
     # EURO MAYORISTA
-    'EURO MAYORISTA': 'EUR-MAYORISTA',
-    'MAYORISTA': 'EUR-MAYORISTA',
+    'EURO MAYORISTA': 'MAY',
+    'MAYORISTA': 'MAY',
 
     # EURO FLORIDA
-    'EURO FLORIDA': 'EUR-FLORIDA',
-    'FLORIDA': 'EUR-FLORIDA',
+    'EURO FLORIDA': 'FLO',
+    'FLORIDA': 'FLO',
 
     # EURO LAURELES
-    'EURO LAURELES': 'EUR-LAURELES',
-    'LAURELES': 'EUR-LAURELES',
+    'EURO LAURELES': 'LAU',
+    'LAURELES': 'LAU',
 
     # EURO LOS BERNAL
-    'EURO LOS BERNAL': 'EUR-BERNAL',
-    'EURO BERNAL': 'EUR-BERNAL',
-    'EURO LOMA BERNAL': 'EUR-BERNAL',
-    'LOMA LOS BERNAL': 'EUR-BERNAL',
-    'BERNAL': 'EUR-BERNAL',
+    'EURO LOS BERNAL': 'LOB',
+    'EURO BERNAL': 'LOB',
+    'EURO LOMA BERNAL': 'LOB',
+    'LOMA LOS BERNAL': 'LOB',
+    'BERNAL': 'LOB',
 
     # EURO SABANETA
-    'EURO SABANETA': 'EUR-SABANETA',
-    'EURO SABANETA VEGAS PLAZA': 'EUR-SABANETA',
-    'PROYECTO SABANETA': 'EUR-SABANETA',
+    'EURO SABANETA': 'SAB',
+    'EURO SABANETA VEGAS PLAZA': 'SAB',
+    'PROYECTO SABANETA': 'SAB',
 
     # EURO GUADALCANAL
-    'EURO GUADALCANAL': 'EUR-GUADALCANAL',
-    'GUADALCANAL': 'EUR-GUADALCANAL',
+    'EURO GUADALCANAL': 'GUA',
+    'GUADALCANAL': 'GUA',
 
     # EURO PALMAS
-    'EURO PALMAS': 'EUR-PALMAS',
-    'EURO PALMAS PALMA GRANDE': 'EUR-PALMAS',
-    'EURO PALMA GRANDE': 'EUR-PALMAS',
-    'PALMAS': 'EUR-PALMAS',
-    'EUO PALMAS': 'EUR-PALMAS',            # typo
+    'EURO PALMAS': 'VEG',
+    'EURO PALMAS PALMA GRANDE': 'VEG',
+    'EURO PALMA GRANDE': 'VEG',
+    'PALMAS': 'VEG',
+    'EUO PALMAS': 'VEG',          # typo
 
     # EURO NIQUIA
-    'EURO NIQUIA': 'EUR-NIQUIA',
-    'NIQUIA': 'EUR-NIQUIA',
+    'EURO NIQUIA': 'NIQ',
+    'NIQUIA': 'NIQ',
 
     # EURO ITAGUI
-    'EURO ITAGUI': 'EUR-ITAGUI',
-    'ITAGUI': 'EUR-ITAGUI',
-    'EUTO ITAGUI': 'EUR-ITAGUI',           # typo
+    'EURO ITAGUI': 'ITA',
+    'ITAGUI': 'ITA',
+    'EUTO ITAGUI': 'ITA',         # typo
 
     # EURO BARBOSA
-    'EURO BARBOSA': 'EUR-BARBOSA',
-    'BARBOSA': 'EUR-BARBOSA',
+    'EURO BARBOSA': 'BAR',
+    'BARBOSA': 'BAR',
 
     # EURO MARINILLA
-    'EURO MARINILLA': 'EUR-MARINILLA',
-    'MARINILLA': 'EUR-MARINILLA',
+    'EURO MARINILLA': 'MAR',
+    'MARINILLA': 'MAR',
 
     # EURO BELLO
-    'EURO BELLO': 'EUR-BELLO',
-    'BELLO': 'EUR-BELLO',
+    'EURO BELLO': 'BEL',
+    'BELLO': 'BEL',
 
     # EURO CASTILLA
-    'EURO CASTILLA': 'EUR-CASTILLA',
-    'CASTILLA': 'EUR-CASTILLA',
-    'SUPERMERCADOS CASTILLA': 'EUR-CASTILLA',
+    'EURO CASTILLA': 'ESC',
+    'CASTILLA': 'ESC',
+    'SUPERMERCADOS CASTILLA': 'ESC',
 
     # EURO LLANOGRANDE
-    'EURO LLANOGRANDE': 'EUR-LLANOGRANDE',
-    'EURO LLANO GRANDE': 'EUR-LLANOGRANDE',
+    'EURO LLANOGRANDE': 'LLA',
+    'EURO LLANO GRANDE': 'LLA',
 
     # EURO ARKADIA
-    'EURO ARKADIA': 'EUR-ARKADIA',
+    'EURO ARKADIA': 'ACA',
 
     # EURO TERRACINA
-    'EURO TERRACINA ENVIGADO': 'EUR-TERRACINA',
-    'EURO TERRACINA': 'EUR-TERRACINA',
+    'EURO TERRACINA ENVIGADO': 'TER',
+    'EURO TERRACINA': 'TER',
 
     # EURO MURANO
-    'EURO MURANO ENVIGADO': 'EUR-MURANO',
-    'EURO MURANO': 'EUR-MURANO',
+    'EURO MURANO ENVIGADO': 'MUR',
+    'EURO MURANO': 'MUR',
 
     # EURO MIXY
-    'EURO MIXY LOS COLORES': 'EUR-MIXY',
-    'EURO MIXY': 'EUR-MIXY',
+    'EURO MIXY LOS COLORES': 'MIX',
+    'EURO MIXY': 'MIX',
 
     # EURO CARNAVAL
-    'EURO CARNAVAL': 'EUR-CARNAVAL',
+    'EURO CARNAVAL': 'CAR',
 
     # EURO LA INFERIOR
-    'EURO LA INFERIOR': 'EUR-INFERIOR',
+    'EURO LA INFERIOR': 'SAL',
 
     # EURO GRAN MANZANA
-    'EURO GRAN MANZANA': 'EUR-GRANMANZANA',
+    'EURO GRAN MANZANA': 'MAN',
 
     # MONTERÍA
-    'EURO MONTERIA': 'EUR-MONTERIA',
-    'EURO MONTERIA PLACES': 'EUR-NTR-MONTERIA',
-    'EURO NUESTRO MONTERIA': 'EUR-NTR-MONTERIA',
-    'MONTERIA': 'EUR-MONTERIA',
+    'EURO MONTERIA': 'MON',
+    'EURO MONTERIA PLACES': 'MON',
+    'EURO NUESTRO MONTERIA': 'NUM',
+    'MONTERIA': 'MON',
 
     # BIG
-    'BIG MAYORISTA': 'BIG-MAYORISTA',
+    'BIG MAYORISTA': 'BIG',
     'BIG CASTILLA': 'BIG-CASTILLA',
-    'BIG LAURELES': 'BIG-LAURELES',
-    'BIG CALDAS': 'BIG-CALDAS',
-    'BIG CRISTOBAL': 'BIG-CRISTOBAL',
-    'BIG PALACE': 'BIG-PALACE',
-    'PALACE': 'BIG-PALACE',
+    'BIG LAURELES': 'LAL',
+    'BIG CALDAS': 'CAL',
+    'BIG CRISTOBAL': 'CRI',
+    'BIG PALACE': 'PAL',
+    'PALACE': 'PAL',
 
     # Operaciones
-    'CEDI': 'OPS-CEDI',
-    'CEDI EMPAQUETADO': 'OPS-CEDI',
-    'CEDI CONDUCTOR': 'OPS-CEDI',
-    'CENTRO DISTRIB.': 'OPS-CEDI',
-    'CENTRO DISTRIB': 'OPS-CEDI',
+    'CEDI': 'CED',
+    'CEDI EMPAQUETADO': 'CED',
+    'CEDI CONDUCTOR': 'CED',
+    'CENTRO DISTRIB.': 'CED',
+    'CENTRO DISTRIB': 'CED',
     'ACOPIO': 'OPS-ACOPIO',
-    'PLANTA DE DESPOSTE': 'OPS-DESPOSTE',
-    'PLANTA DESPOSTE': 'OPS-DESPOSTE',
-    'DESPOSTAR': 'OPS-DESPOSTE',
-    'ADMINSTRACION': 'OPS-ADMIN',
-    'ADMINISTRATIVOS': 'OPS-ADMIN',
-    'ADMINISTRACION': 'OPS-ADMIN',
-    'ACMINISTRACION': 'OPS-ADMIN',
-    'ADMIISTRATIVOS': 'OPS-ADMIN',
-    'ADMINISTRACION': 'OPS-ADMIN',
+    'PLANTA DE DESPOSTE': 'DES',
+    'PLANTA DESPOSTE': 'DES',
+    'DESPOSTAR': 'DES',
+    'ADMINSTRACION': 'ADM',
+    'ADMINISTRATIVOS': 'ADM',
+    'ADMINISTRACION': 'ADM',
+    'ACMINISTRACION': 'ADM',
+    'ADMIISTRATIVOS': 'ADM',
 }
 
 # Pre-normalizar todas las claves para lookup rápido
