@@ -57,7 +57,9 @@ SEDES_CANONICAS = [
     {'codigo': 'DES',          'nombre': 'Planta de Desposte', 'ciudad': 'Medellín'},
     {'codigo': 'ADM',          'nombre': 'Administración',    'ciudad': 'Medellín'},
     # Omnicanal — domicilios
-    {'codigo': 'OMN', 'nombre': 'Omnicanal', 'ciudad': 'Medellín'},
+    {'codigo': 'OMN', 'nombre': 'Omnicanal',              'ciudad': 'Medellín'},
+    # Barranquilla
+    {'codigo': 'ROS', 'nombre': 'Euro Rosales Barranquilla', 'ciudad': 'Barranquilla'},
 ]
 
 # ── Variantes → código canónico ────────────────────────────────────────────────
@@ -151,6 +153,11 @@ _VARIANTES_RAW = {
 
     # EURO CARNAVAL
     'EURO CARNAVAL': 'CAR',
+    'EURO CARNAVAL BARRANQUILLA': 'CAR',
+
+    # EURO ROSALES BARRANQUILLA
+    'EURO ROSALES BARRANQUILLA': 'ROS',
+    'EURO ROSALES': 'ROS',
 
     # EURO LA INFERIOR
     'EURO LA INFERIOR': 'SAL',
