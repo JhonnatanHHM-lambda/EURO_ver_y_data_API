@@ -37,6 +37,9 @@ python-docx==1.1.2
 # Storage
 minio==7.2.20
 
+# HTTP
+requests==2.32.3
+
 # Server
 gunicorn==23.0.0
 whitenoise==6.11.0
