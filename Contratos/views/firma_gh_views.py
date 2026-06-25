@@ -185,7 +185,7 @@ class RegistroFirmaEmpleadorListView(APIView):
             qs = qs.filter(fecha_generacion__date__lte=fecha_hasta)
 
         tz_co = pytz.timezone('America/Bogota')
-        TIPO_CARTA = {'NO_PRORROGA': 'Sin prórroga', 'PRORROGA': 'Prórroga', 'TERMINACION': 'Terminación'}
+        TIPO_CARTA = {'NO_PRORROGA': 'Preaviso', 'PRORROGA': 'Prórroga', 'TERMINACION': 'Terminación'}
 
         data = []
         for r in qs:
@@ -295,7 +295,7 @@ class ReporteRegistroFirmaView(APIView):
             cell.border = BORDER
             ws.column_dimensions[get_column_letter(col)].width = w_col
 
-        TIPO_CARTA = {'NO_PRORROGA': 'Sin prórroga', 'PRORROGA': 'Prórroga', 'TERMINACION': 'Terminación'}
+        TIPO_CARTA = {'NO_PRORROGA': 'Preaviso', 'PRORROGA': 'Prórroga', 'TERMINACION': 'Terminación'}
         tz_co = pytz.timezone('America/Bogota')
 
         for row_n, r in enumerate(qs, 2):

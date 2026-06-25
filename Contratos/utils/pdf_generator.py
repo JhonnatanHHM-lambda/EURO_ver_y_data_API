@@ -423,7 +423,7 @@ def _generar_pdf_bytes(contrato, firma_data: str = None, firma_empleador: dict =
     # Bloque empleado (derecha)
     empldo_label = 'El Empleado,' if tipo == 'PRORROGA' else 'El Empleado,'
     empldo_nom   = contrato.nombre_completo
-    empldo_ced   = f'{contrato.tipo_documento} {contrato.documento_id}'
+    empldo_ced   = contrato.documento_id
     fecha_firma  = contrato.fecha_firma if firma_data and contrato.fecha_firma else None
     _draw_sig_block(empldo_x, empldo_label, firma_data, empldo_nom, empldo_ced, fecha_firma)
 
