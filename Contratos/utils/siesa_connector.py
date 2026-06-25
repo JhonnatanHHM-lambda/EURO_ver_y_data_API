@@ -29,6 +29,9 @@ EMAIL_OVERRIDE = "jonnathan.henao@lambdaanalytics.co"
 
 _TIPO_DOC = {"C": "CC", "T": "TI", "E": "CE", "P": "PA"}
 
+# Centros de operación cerrados — se excluyen del procesamiento de contratos
+_CENTROS_CERRADOS = {'BAR', 'ESC', 'MAR', 'MAZ'}
+
 _SQL = """
     SELECT
         t.c0541_id_tipo_ident                      AS tipo_documento_raw,
@@ -87,7 +90,10 @@ def obtener_empleados_en_rango(fecha_inicio: date, fecha_fin: date) -> list:
         cur.execute(_SQL, [fecha_inicio, fecha_fin])
         rows = cur.fetchall()
         conn.close()
-        resultado = [_row_to_dict(r) for r in rows if r.fecha_fin]
+        resultado = [
+            _row_to_dict(r) for r in rows
+            if r.fecha_fin and (r.centro_op_codigo or '').strip() not in _CENTROS_CERRADOS
+        ]
         logger.info(f"siesa_connector: {len(resultado)} contratos en rango {fecha_inicio} - {fecha_fin}")
         return resultado
     except Exception as exc:

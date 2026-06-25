@@ -55,6 +55,8 @@ SEDES_CANONICAS = [
     {'codigo': 'OPS-DESPOSTE',     'nombre': 'Planta de Desposte',    'ciudad': 'Medellín'},
     {'codigo': 'OPS-ADMIN',        'nombre': 'Administración',        'ciudad': 'Medellín'},
     {'codigo': 'OPS-ACOPIO',       'nombre': 'Acopio',                'ciudad': 'Medellín'},
+    # Omnicanal — domicilios
+    {'codigo': 'OMN',              'nombre': 'Omnicanal',             'ciudad': 'Medellín'},
 ]
 
 # ── Variantes → código canónico ────────────────────────────────────────────────
