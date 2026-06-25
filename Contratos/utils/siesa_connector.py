@@ -32,6 +32,35 @@ _TIPO_DOC = {"C": "CC", "T": "TI", "E": "CE", "P": "PA"}
 # Centros de operación cerrados — se excluyen del procesamiento de contratos
 _CENTROS_CERRADOS = {'BAR', 'ESC', 'MAR', 'MAZ'}
 
+# Traducción código SIESA (c0550_id_co) → código canónico de Sede en el sistema
+# Fuente: "Sedes Inversiones Euro S.A (7) Actualizado.xlsx"
+_SIESA_A_CANONICO = {
+    'FRO': 'EUR-FRONTERA',
+    'GUA': 'EUR-GUADALCANAL',
+    'ITA': 'EUR-ITAGUI',
+    'SAB': 'EUR-SABANETA',
+    'LLA': 'EUR-LLANOGRANDE',
+    'MAY': 'EUR-MAYORISTA',
+    'MUR': 'EUR-MURANO',
+    'TER': 'EUR-TERRACINA',
+    'ACA': 'EUR-ARKADIA',
+    'BEL': 'EUR-BELLO',
+    'FLO': 'EUR-FLORIDA',
+    'SAL': 'EUR-INFERIOR',
+    'LAU': 'EUR-LAURELES',
+    'LOB': 'EUR-BERNAL',
+    'MIX': 'EUR-MIXY',
+    'VEG': 'EUR-PALMAS',
+    'MAN': 'EUR-GRANMANZANA',
+    'CAR': 'EUR-CARNAVAL',
+    'MON': 'EUR-MONTERIA',
+    'NUM': 'EUR-NTR-MONTERIA',
+    'ADM': 'OPS-ADMIN',
+    'CED': 'OPS-CEDI',
+    'DES': 'OPS-DESPOSTE',
+    'OMN': 'OMN',
+}
+
 _SQL = """
     SELECT
         t.c0541_id_tipo_ident                      AS tipo_documento_raw,
@@ -74,7 +103,10 @@ def _row_to_dict(row) -> dict:
         "documento_id":         (row.documento or "").strip(),
         "nombre_completo":      (row.nombre_completo or "").strip(),
         "cargo":                (row.cargo or "").strip(),
-        "centro_operacion":     (row.centro_op_codigo or "").strip(),
+        "centro_operacion":     _SIESA_A_CANONICO.get(
+            (row.centro_op_codigo or "").strip(),
+            (row.centro_op_codigo or "").strip(),
+        ),
         "fecha_inicio_contrato": fecha_inicio,
         "fecha_finalizacion":   fecha_fin,
         "celular":              (row.celular or "").strip(),
