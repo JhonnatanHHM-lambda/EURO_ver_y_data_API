@@ -43,6 +43,7 @@ def revisar_contratos_60_dias():
                 documento_id=emp['documento_id'],
                 nombre_completo=emp['nombre_completo'],
                 cargo=emp['cargo'],
+                fecha_inicio_contrato=emp.get('fecha_inicio_contrato'),
                 fecha_finalizacion=emp['fecha_finalizacion'],
                 celular=emp.get('celular', ''),
                 email=emp.get('email', ''),
@@ -236,30 +237,39 @@ def escalar_contratos_sin_firma():
 
 @shared_task(name='Contratos.tasks.notificar_directores_sin_decision', queue='contratos')
 def notificar_directores_sin_decision():
-    """Recuerda diariamente a directores los contratos pendientes de su decisión."""
+    """Recuerda diariamente a directores los contratos pendientes: UN email por director con todos listados."""
     from .models import Contrato, AsignacionCentro
-    from .utils.notificaciones import enviar_recordatorio_decision
+    from .utils.notificaciones import enviar_recordatorio_decision_digest
 
     contratos = Contrato.objects.filter(
         estado='PENDIENTE_DECISION_DIRECTOR'
-    ).select_related('sede')
+    ).select_related('sede').order_by('fecha_finalizacion')
 
+    # Agrupar contratos por director: {director_id: {'usuario': ..., 'contratos': [...]}}
+    por_director = {}
     for contrato in contratos:
         if not contrato.sede:
             continue
-
         asignaciones = AsignacionCentro.objects.filter(
             sede=contrato.sede,
             rol='DIRECTOR',
             activo=True,
             usuario__is_active=True,
         ).select_related('usuario')
+        for asig in asignaciones:
+            uid = asig.usuario.id
+            if uid not in por_director:
+                por_director[uid] = {'usuario': asig.usuario, 'contratos': []}
+            por_director[uid]['contratos'].append(contrato)
 
-        for asignacion in asignaciones:
-            try:
-                enviar_recordatorio_decision(asignacion.usuario, contrato)
-            except Exception as e:
-                logger.error(f'Error recordatorio director {asignacion.usuario.correo}: {e}')
+    # Un solo email por director con todos sus pendientes
+    for uid, item in por_director.items():
+        try:
+            enviar_recordatorio_decision_digest(item['usuario'], item['contratos'])
+        except Exception as e:
+            logger.error(f'Error digest recordatorio director {item["usuario"].correo}: {e}')
+
+    logger.info(f'notificar_directores_sin_decision: digest enviado a {len(por_director)} director(es)')
 
 
 @shared_task(name='Contratos.tasks.generar_y_guardar_pdf_firmado', queue='contratos')
