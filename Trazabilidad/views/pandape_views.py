@@ -201,7 +201,7 @@ class PandapeConfirmarView(APIView):
                     estado_candidato='HABILITADO',
                     fuente_carga='PANDAPE',
                     cargado_por=request.user,
-                    carga_excel=carga,
+                    carga=carga,
                 )
                 creados += 1
             except Exception as e:
