@@ -17,6 +17,25 @@ def _norm_doc(val):
     return re.sub(r'[\.\-\s]', '', str(val).strip()) or None
 
 
+_GENERO_MAP = {
+    'hombre': 'MASCULINO', 'masculino': 'MASCULINO', 'm': 'MASCULINO',
+    'mujer': 'FEMENINO',   'femenino': 'FEMENINO',   'f': 'FEMENINO',
+    'otro': 'OTRO',        'no especificado': 'OTRO',
+}
+
+
+def _norm_genero(val):
+    return _GENERO_MAP.get(str(val).strip().lower(), '')
+
+
+def _norm_estudios(val):
+    """Extrae el nivel de estudios del formato Pandapé 'institución . nivel' y trunca a 60."""
+    raw = str(val or '').strip()
+    partes = re.split(r'\s*\.\s+', raw, maxsplit=1)
+    nivel = partes[-1].strip() if len(partes) > 1 else raw
+    return nivel[:60]
+
+
 def _clasificar(registros):
     """Dado los registros de una persona, retorna su clasificación para PandaPé."""
     estados = [r.estado_candidato for r in registros]
@@ -96,8 +115,8 @@ class PandapeProcesarView(APIView):
                 'fecha_aplicacion': str(row.get('Fecha de aplicación', '') or '').strip(),
                 'provincia': str(row.get('Provincia', '') or '').strip(),
                 'direccion': str(row.get('Dirección', '') or '').strip(),
-                'estudios': str(row.get('Estudios', '') or '').strip(),
-                'genero': str(row.get('Género', '') or '').strip(),
+                'estudios': _norm_estudios(row.get('Estudios', '')),
+                'genero': _norm_genero(row.get('Género', '')),
                 'observaciones': ' | '.join(obs_parts),
                 'historial_empresa': str(row.get('Historial de aplicación en la empresa', '') or '').strip(),
             })
