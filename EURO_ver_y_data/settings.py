@@ -13,6 +13,10 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# Cuando Django está detrás de Nginx con SSL, build_absolute_uri usa https://
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
