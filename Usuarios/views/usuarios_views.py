@@ -14,6 +14,20 @@ from Usuarios.serializers import (
 )
 
 
+def _tiene_relaciones_criticas(usuario):
+    """
+    Retorna True si el usuario tiene registros de auditoría que no deben
+    perderse (eventos de contrato, firmas, autorizaciones).
+    En ese caso solo se permite desactivar, no eliminar permanentemente.
+    """
+    from Contratos.models import EventoContrato, RegistroFirmaEmpleador, FirmaProvisional
+    return (
+        EventoContrato.objects.filter(usuario=usuario).exists()
+        or RegistroFirmaEmpleador.objects.filter(usuario_empleador=usuario).exists()
+        or FirmaProvisional.objects.filter(autorizado_por=usuario).exists()
+    )
+
+
 class UsuariosCRUDView(APIView):
 
     @require_permission(['can_manage_users'], app_label='Usuarios')
@@ -27,10 +41,15 @@ class UsuariosCRUDView(APIView):
     )
     def get(self, request, pk=None):
         if pk:
-            obj = get_object_or_404(Usuario, pk=pk, estado=True)
+            obj = get_object_or_404(Usuario, pk=pk)
             return Response(UsuarioListSerializer(obj).data)
 
-        queryset = Usuario.objects.filter(estado=True).prefetch_related('groups__permissions')
+        include_inactivos = request.query_params.get('include_inactivos') == 'true'
+        if include_inactivos:
+            # Retorna solo los archivados (soft-deleted) para el panel de gestión
+            queryset = Usuario.objects.filter(estado=False).prefetch_related('groups__permissions')
+        else:
+            queryset = Usuario.objects.filter(estado=True).prefetch_related('groups__permissions')
         search = request.query_params.get('search')
         rol = request.query_params.get('rol')
 
@@ -74,14 +93,35 @@ class UsuariosCRUDView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @require_permission(['can_manage_users'], app_label='Usuarios')
-    @swagger_auto_schema(operation_summary='Eliminar usuario (soft delete)', tags=['Usuarios'])
+    @swagger_auto_schema(operation_summary='Eliminar usuario permanentemente', tags=['Usuarios'])
     def delete(self, request, pk):
-        obj = get_object_or_404(Usuario, pk=pk, estado=True)
+        try:
+            obj = Usuario.objects.get(pk=pk)
+        except Usuario.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=404)
+
         if obj == request.user:
             return Response({'error': 'No puedes eliminarte a ti mismo.'}, status=400)
-        obj.estado = False
-        obj.is_active = False
-        obj.save(update_fields=['estado', 'is_active'])
+
+        # Usuario ya archivado (soft-delete previo): purgar directamente
+        if not obj.estado:
+            obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # Usuario activo: verificar relaciones críticas de auditoría
+        if _tiene_relaciones_criticas(obj):
+            return Response({
+                'error': (
+                    f'"{obj.nombres} {obj.apellidos}" tiene registros de auditoría asociados '
+                    '(eventos de contrato, firmas o autorizaciones). '
+                    'No es posible eliminarlo para preservar la trazabilidad. '
+                    'Puedes desactivarlo para que no pueda iniciar sesión.'
+                ),
+                'solo_desactivar': True,
+            }, status=status.HTTP_409_CONFLICT)
+
+        # Sin relaciones críticas: eliminar permanentemente
+        obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
