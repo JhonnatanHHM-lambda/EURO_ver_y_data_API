@@ -451,9 +451,10 @@ class CrearContratoDemoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not request.user.is_superuser:
+        puede = request.user.is_superuser or request.user.has_perm('Usuarios.can_manage_users')
+        if not puede:
             return Response(
-                {'error': 'Solo superusuarios pueden crear contratos demo.'},
+                {'error': 'Solo administradores pueden crear contratos demo.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -561,9 +562,10 @@ class CrearContratoDemoView(APIView):
     def delete(self, request):
         """Elimina todos los contratos demo (documento_id empieza con 'DEMO')
         junto con sus archivos en MinIO."""
-        if not request.user.is_superuser:
+        puede = request.user.is_superuser or request.user.has_perm('Usuarios.can_manage_users')
+        if not puede:
             return Response(
-                {'error': 'Solo superusuarios pueden eliminar contratos demo.'},
+                {'error': 'Solo administradores pueden eliminar contratos demo.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
