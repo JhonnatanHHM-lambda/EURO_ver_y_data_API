@@ -85,7 +85,7 @@ class UsuariosCRUDView(APIView):
         tags=['Usuarios'],
     )
     def put(self, request, pk):
-        obj = get_object_or_404(Usuario, pk=pk, estado=True)
+        obj = get_object_or_404(Usuario, pk=pk)
         serializer = UsuarioUpdateSerializer(obj, data=request.data, partial=True)
         if serializer.is_valid():
             actualizado = serializer.save()
