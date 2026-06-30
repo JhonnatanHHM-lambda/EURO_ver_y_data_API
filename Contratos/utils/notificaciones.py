@@ -171,7 +171,7 @@ def enviar_whatsapp_empleado(contrato):
         f'Hola {contrato.nombre_completo}, desde Euro Supermercados '
         f'te informamos que tienes una carta pendiente de firma: {firma_url}'
     )
-    logger.info(f'[WA SIMULADO] â†' {contrato.celular}: {mensaje}')
+    logger.info(f'[WA SIMULADO] → {contrato.celular}: {mensaje}')
 
 
 def enviar_alerta_director(director, contrato, dias_restantes):
@@ -207,7 +207,7 @@ def enviar_alerta_director(director, contrato, dias_restantes):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Alerta director {director.correo} â†' contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Alerta director {director.correo} → contrato {contrato.documento_id}')
 
 
 def enviar_alerta_sin_firma(director, contrato):
@@ -243,7 +243,7 @@ def enviar_alerta_sin_firma(director, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Alerta sin firma â†' director {director.correo}')
+    logger.info(f'[CORREO] Alerta sin firma → director {director.correo}')
 
 
 def enviar_recordatorio_decision(director, contrato):
@@ -345,7 +345,7 @@ def enviar_recordatorio_decision_digest(director, contratos: list):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Digest decisiones â†' director {director.correo} ({n} contratos)')
+    logger.info(f'[CORREO] Digest decisiones → director {director.correo} ({n} contratos)')
 
 
 def enviar_email_gh_decision_director(gh_usuario, contrato, tipo_decision):
@@ -386,7 +386,7 @@ def enviar_email_gh_decision_director(gh_usuario, contrato, tipo_decision):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] NotificaciÃ³n GH {gh_usuario.correo} â†' contrato {contrato.documento_id} decisiÃ³n {tipo_decision}')
+    logger.info(f'[CORREO] NotificaciÃ³n GH {gh_usuario.correo} → contrato {contrato.documento_id} decisiÃ³n {tipo_decision}')
 
 
 def enviar_email_director_condiciones_listas(director, contrato):
@@ -441,7 +441,7 @@ def enviar_email_director_condiciones_listas(director, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Condiciones listas â†' director {director.correo} contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Condiciones listas → director {director.correo} contrato {contrato.documento_id}')
 
 
 def enviar_email_gh_contrato_firmado(gh_usuario, contrato):
@@ -480,7 +480,7 @@ def enviar_email_gh_contrato_firmado(gh_usuario, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Contrato firmado â†' GH {gh_usuario.correo} contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Contrato firmado → GH {gh_usuario.correo} contrato {contrato.documento_id}')
 
 
 def enviar_alerta_gh(gh, contrato, dias_restantes):
