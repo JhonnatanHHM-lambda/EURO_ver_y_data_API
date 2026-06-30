@@ -175,7 +175,7 @@ def _preservar_carta_firmada(contrato):
 
 
 class ProrrogarContratoView(APIView):
-    """Director decide prorrogar — registra la decisión y notifica a GH para que defina condiciones."""
+    """GH decide prorrogar — registra la decisión y pasa a definir condiciones."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -184,10 +184,8 @@ class ProrrogarContratoView(APIView):
         except Contrato.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        # firma_secuencial: el director decide sobre un contrato NO_PRORROGA que el empleado
-        # aún no ha firmado (pdf_firmado_key vacío). Aplica tanto cuando el estado es
-        # PENDIENTE_FIRMA_NO_PRORROGA como cuando fue escalado a PENDIENTE_DECISION_DIRECTOR
-        # por el task sin que el empleado hubiera firmado.
+        # firma_secuencial: GH decide sobre un contrato NO_PRORROGA que el empleado
+        # aún no ha firmado (pdf_firmado_key vacío).
         firma_secuencial = (
             contrato.tipo_carta == 'NO_PRORROGA' and
             not contrato.pdf_firmado_key
@@ -213,27 +211,11 @@ class ProrrogarContratoView(APIView):
             detalle={'accion': 'PRORROGA'},
         )
 
-        gh_users = _get_gh_users(contrato.sede)
-        from Usuarios.models import NotificacionAdmin
-        from ..utils.notificaciones import enviar_email_gh_decision_director
-        for gh in gh_users:
-            NotificacionAdmin.objects.create(
-                tipo='decision_director_prorroga',
-                titulo=f'Acción requerida — Prórroga: {contrato.nombre_completo}',
-                cuerpo=f'El director decidió prorrogar el contrato de {contrato.nombre_completo}. Define las condiciones.',
-                contrato=contrato,
-                usuario=gh,
-            )
-            try:
-                enviar_email_gh_decision_director(gh, contrato, 'PRORROGA')
-            except Exception:
-                pass
-
-        return Response({'mensaje': 'Decisión registrada. Se notificó a Gestión Humana para definir las condiciones.'})
+        return Response({'mensaje': 'Decisión registrada. Define las condiciones para notificar al empleado.'})
 
 
 class TerminarContratoView(APIView):
-    """Director decide terminar — registra la decisión y notifica a GH para que suba documentos."""
+    """GH decide terminar — registra la decisión y pasa a definir condiciones."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -243,8 +225,7 @@ class TerminarContratoView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         # firma_secuencial: igual que en ProrrogarContratoView — detectar por tipo_carta y
-        # ausencia de firma, no por estado (que puede ser PENDIENTE_DECISION_DIRECTOR
-        # si el task escaló antes de que el empleado firmara).
+        # ausencia de firma, no por estado.
         firma_secuencial = (
             contrato.tipo_carta == 'NO_PRORROGA' and
             not contrato.pdf_firmado_key
@@ -269,23 +250,7 @@ class TerminarContratoView(APIView):
             detalle={'accion': 'TERMINACION'},
         )
 
-        gh_users = _get_gh_users(contrato.sede)
-        from Usuarios.models import NotificacionAdmin
-        from ..utils.notificaciones import enviar_email_gh_decision_director
-        for gh in gh_users:
-            NotificacionAdmin.objects.create(
-                tipo='decision_director_terminacion',
-                titulo=f'Acción requerida — Terminación: {contrato.nombre_completo}',
-                cuerpo=f'El director decidió terminar el contrato de {contrato.nombre_completo}. Sube los documentos.',
-                contrato=contrato,
-                usuario=gh,
-            )
-            try:
-                enviar_email_gh_decision_director(gh, contrato, 'TERMINACION')
-            except Exception:
-                pass
-
-        return Response({'mensaje': 'Decisión registrada. Se notificó a Gestión Humana para definir las condiciones.'})
+        return Response({'mensaje': 'Decisión registrada. Define las condiciones para notificar al empleado.'})
 
 
 class CondicionesGHView(APIView):
