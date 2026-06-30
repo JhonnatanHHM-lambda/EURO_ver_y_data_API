@@ -70,10 +70,10 @@ def revisar_contratos_60_dias():
 
 @shared_task(name='Contratos.tasks.revisar_contratos_proximos_vencer', queue='contratos')
 def revisar_contratos_proximos_vencer():
-    """Notifica a directores según la configuración de días de cada sede."""
+    """Notifica a GH según la configuración de días de cada sede."""
     from Trazabilidad.models import Sede
     from .models import Contrato, EventoContrato, AsignacionCentro
-    from .utils.notificaciones import enviar_alerta_director
+    from .utils.notificaciones import enviar_alerta_gh
 
     hoy = timezone.localdate()
 
@@ -89,6 +89,8 @@ def revisar_contratos_proximos_vencer():
             fecha_finalizacion__gte=hoy,
         ).exclude(estado__in=[
             'PENDIENTE_DECISION_DIRECTOR',
+            'PENDIENTE_DECISION_GH',
+            'PENDIENTE_CONDICIONES_GH',
             'PENDIENTE_FIRMA_PRORROGA',
             'PENDIENTE_FIRMA_TERMINACION',
             'SIN_CANAL_CONTACTO',
@@ -103,7 +105,7 @@ def revisar_contratos_proximos_vencer():
 
         asignaciones = AsignacionCentro.objects.filter(
             sede=sede,
-            rol='DIRECTOR',
+            rol='GH',
             activo=True,
             usuario__is_active=True,
         ).select_related('usuario')
@@ -111,8 +113,8 @@ def revisar_contratos_proximos_vencer():
         for contrato in contratos:
             for asignacion in asignaciones:
                 try:
-                    enviar_alerta_director(asignacion.usuario, contrato, sede.dias_alerta_director)
-                    contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+                    enviar_alerta_gh(asignacion.usuario, contrato, sede.dias_alerta_director)
+                    contrato.estado = 'PENDIENTE_DECISION_GH'
                     contrato.save(update_fields=['estado'])
                     EventoContrato.objects.create(
                         contrato=contrato,
@@ -120,12 +122,12 @@ def revisar_contratos_proximos_vencer():
                         detalle={
                             'motivo': 'revision_proximos_vencer',
                             'dias': sede.dias_alerta_director,
-                            'director': asignacion.usuario.correo,
+                            'gh': asignacion.usuario.correo,
                         },
                     )
                     from Usuarios.models import NotificacionAdmin
                     NotificacionAdmin.objects.create(
-                        tipo='alerta_contrato',
+                        tipo='alerta_contrato_gh',
                         titulo=f'Contrato próximo a vencer — {contrato.nombre_completo}',
                         cuerpo=(
                             f'{contrato.nombre_completo} (Doc: {contrato.documento_id}) — '
@@ -138,7 +140,7 @@ def revisar_contratos_proximos_vencer():
                         contrato=contrato,
                     )
                 except Exception as e:
-                    logger.error(f'Error notificando director {asignacion.usuario.correo} para contrato {contrato.id}: {e}')
+                    logger.error(f'Error notificando GH {asignacion.usuario.correo} para contrato {contrato.id}: {e}')
 
 
 @shared_task(name='Contratos.tasks.enviar_notificacion_empleado_task', queue='contratos')
@@ -195,9 +197,9 @@ def enviar_notificacion_empleado_task(contrato_id):
 
 @shared_task(name='Contratos.tasks.escalar_contratos_sin_firma', queue='contratos')
 def escalar_contratos_sin_firma():
-    """A los 3 días sin firma notifica al director. Reescala cada 3 días."""
+    """A los 3 días sin firma notifica al director (ciclos 1–3). Al 4to ciclo escala a GH y se detiene."""
     from .models import Contrato, EventoContrato, AsignacionCentro
-    from .utils.notificaciones import enviar_alerta_sin_firma
+    from .utils.notificaciones import enviar_alerta_sin_firma, enviar_alerta_gh_sin_firma
     from django.db.models import Q
 
     limite = timezone.now() - timedelta(days=3)
@@ -205,6 +207,8 @@ def escalar_contratos_sin_firma():
         estado__in=['PENDIENTE_FIRMA_NO_PRORROGA', 'PENDIENTE_FIRMA_PRORROGA', 'PENDIENTE_FIRMA_TERMINACION'],
         fecha_primer_envio__lte=limite,
         token_usado=False,
+        # Detener después del 4to ciclo (contador llega a 4 al finalizar el 4to)
+        contador_escalamientos__lt=4,
     ).filter(
         Q(fecha_ultimo_escalamiento__isnull=True) |
         Q(fecha_ultimo_escalamiento__lte=timezone.now() - timedelta(days=3))
@@ -214,62 +218,107 @@ def escalar_contratos_sin_firma():
         if not contrato.sede:
             continue
 
-        asignaciones = AsignacionCentro.objects.filter(
-            sede=contrato.sede,
-            rol='DIRECTOR',
-            activo=True,
-            usuario__is_active=True,
-        ).select_related('usuario')
+        es_escalamiento_final = contrato.contador_escalamientos >= 3
 
-        for asignacion in asignaciones:
-            try:
-                enviar_alerta_sin_firma(asignacion.usuario, contrato)
-                contrato.contador_escalamientos += 1
-                contrato.fecha_ultimo_escalamiento = timezone.now()
-                contrato.save(update_fields=['contador_escalamientos', 'fecha_ultimo_escalamiento'])
-                EventoContrato.objects.create(
-                    contrato=contrato, tipo_evento='ESCALADO',
-                    detalle={'director': asignacion.usuario.correo, 'nro': contrato.contador_escalamientos},
-                )
-            except Exception as e:
-                logger.error(f'Error escalando contrato {contrato.id} a {asignacion.usuario.correo}: {e}')
+        if es_escalamiento_final:
+            # 4to ciclo: escalar a GH y detener recordatorios futuros
+            asignaciones_gh = AsignacionCentro.objects.filter(
+                sede=contrato.sede,
+                rol='GH',
+                activo=True,
+                usuario__is_active=True,
+            ).select_related('usuario')
+
+            for asignacion in asignaciones_gh:
+                try:
+                    enviar_alerta_gh_sin_firma(asignacion.usuario, contrato)
+                    contrato.contador_escalamientos = 4  # barrera — el filtro __lt=4 lo excluirá
+                    contrato.fecha_ultimo_escalamiento = timezone.now()
+                    contrato.save(update_fields=['contador_escalamientos', 'fecha_ultimo_escalamiento'])
+                    EventoContrato.objects.create(
+                        contrato=contrato, tipo_evento='ESCALADO',
+                        detalle={'gh': asignacion.usuario.correo, 'nro': contrato.contador_escalamientos, 'final': True},
+                    )
+                except Exception as e:
+                    logger.error(f'Error escalamiento final contrato {contrato.id} a GH {asignacion.usuario.correo}: {e}')
+        else:
+            # Ciclos 1–3: notificar al director
+            asignaciones_dir = AsignacionCentro.objects.filter(
+                sede=contrato.sede,
+                rol='DIRECTOR',
+                activo=True,
+                usuario__is_active=True,
+            ).select_related('usuario')
+
+            for asignacion in asignaciones_dir:
+                try:
+                    enviar_alerta_sin_firma(asignacion.usuario, contrato)
+                    contrato.contador_escalamientos += 1
+                    contrato.fecha_ultimo_escalamiento = timezone.now()
+                    contrato.save(update_fields=['contador_escalamientos', 'fecha_ultimo_escalamiento'])
+                    EventoContrato.objects.create(
+                        contrato=contrato, tipo_evento='ESCALADO',
+                        detalle={'director': asignacion.usuario.correo, 'nro': contrato.contador_escalamientos},
+                    )
+                except Exception as e:
+                    logger.error(f'Error escalando contrato {contrato.id} a {asignacion.usuario.correo}: {e}')
 
 
 @shared_task(name='Contratos.tasks.notificar_directores_sin_decision', queue='contratos')
 def notificar_directores_sin_decision():
-    """Recuerda diariamente a directores los contratos pendientes: UN email por director con todos listados."""
+    """Recuerda diariamente: a directores (PENDIENTE_DECISION_DIRECTOR legacy) y a GH (PENDIENTE_DECISION_GH)."""
     from .models import Contrato, AsignacionCentro
-    from .utils.notificaciones import enviar_recordatorio_decision_digest
+    from .utils.notificaciones import enviar_recordatorio_decision_digest, enviar_recordatorio_decision_gh_digest
 
-    contratos = Contrato.objects.filter(
+    # --- Recordatorio a directores (contratos legados) ---
+    contratos_director = Contrato.objects.filter(
         estado='PENDIENTE_DECISION_DIRECTOR'
     ).select_related('sede').order_by('fecha_finalizacion')
 
-    # Agrupar contratos por director: {director_id: {'usuario': ..., 'contratos': [...]}}
     por_director = {}
-    for contrato in contratos:
+    for contrato in contratos_director:
         if not contrato.sede:
             continue
-        asignaciones = AsignacionCentro.objects.filter(
-            sede=contrato.sede,
-            rol='DIRECTOR',
-            activo=True,
-            usuario__is_active=True,
-        ).select_related('usuario')
-        for asig in asignaciones:
+        for asig in AsignacionCentro.objects.filter(
+            sede=contrato.sede, rol='DIRECTOR', activo=True, usuario__is_active=True,
+        ).select_related('usuario'):
             uid = asig.usuario.id
             if uid not in por_director:
                 por_director[uid] = {'usuario': asig.usuario, 'contratos': []}
             por_director[uid]['contratos'].append(contrato)
 
-    # Un solo email por director con todos sus pendientes
     for uid, item in por_director.items():
         try:
             enviar_recordatorio_decision_digest(item['usuario'], item['contratos'])
         except Exception as e:
             logger.error(f'Error digest recordatorio director {item["usuario"].correo}: {e}')
 
-    logger.info(f'notificar_directores_sin_decision: digest enviado a {len(por_director)} director(es)')
+    # --- Recordatorio a GH ---
+    contratos_gh = Contrato.objects.filter(
+        estado='PENDIENTE_DECISION_GH'
+    ).select_related('sede').order_by('fecha_finalizacion')
+
+    por_gh = {}
+    for contrato in contratos_gh:
+        if not contrato.sede:
+            continue
+        for asig in AsignacionCentro.objects.filter(
+            sede=contrato.sede, rol='GH', activo=True, usuario__is_active=True,
+        ).select_related('usuario'):
+            uid = asig.usuario.id
+            if uid not in por_gh:
+                por_gh[uid] = {'usuario': asig.usuario, 'contratos': []}
+            por_gh[uid]['contratos'].append(contrato)
+
+    for uid, item in por_gh.items():
+        try:
+            enviar_recordatorio_decision_gh_digest(item['usuario'], item['contratos'])
+        except Exception as e:
+            logger.error(f'Error digest recordatorio GH {item["usuario"].correo}: {e}')
+
+    logger.info(
+        f'notificar_directores_sin_decision: digest director={len(por_director)}, GH={len(por_gh)}'
+    )
 
 
 @shared_task(name='Contratos.tasks.generar_y_guardar_pdf_firmado', queue='contratos')
@@ -324,10 +373,10 @@ def generar_y_guardar_pdf_firmado(contrato_id):
 
 @shared_task(name='Contratos.tasks.alertar_contratos_urgentes', queue='contratos')
 def alertar_contratos_urgentes():
-    """Alerta urgente al director cuando un contrato activo vence en ≤2 días.
+    """Alerta urgente a GH cuando un contrato activo vence en ≤2 días.
     Sin deduplicación: se envía aunque se haya notificado el día anterior."""
     from .models import Contrato, AsignacionCentro, EventoContrato
-    from .utils.notificaciones import enviar_alerta_urgente_director
+    from .utils.notificaciones import enviar_alerta_urgente_gh
     from django.db.models import Q
     from Usuarios.models import NotificacionAdmin
 
@@ -340,10 +389,11 @@ def alertar_contratos_urgentes():
     ).exclude(
         Q(estado='FIRMADO') & Q(tipo_carta__in=['PRORROGA', 'TERMINACION'])
     ).exclude(
-        # Estos estados ya están en manos del director o más adelante — no reenviar alerta
-        estado__in=['PENDIENTE_DECISION_DIRECTOR', 'PENDIENTE_CONDICIONES_GH',
-                    'PENDIENTE_NOTIFICACION_EMPLEADO', 'PENDIENTE_FIRMA_PRORROGA',
-                    'PENDIENTE_FIRMA_TERMINACION', 'SIN_CANAL_CONTACTO', 'ERROR_NOTIFICACION'],
+        # Estos estados ya están en manos de GH o más adelante — no reenviar alerta
+        estado__in=['PENDIENTE_DECISION_DIRECTOR', 'PENDIENTE_DECISION_GH',
+                    'PENDIENTE_CONDICIONES_GH', 'PENDIENTE_NOTIFICACION_EMPLEADO',
+                    'PENDIENTE_FIRMA_PRORROGA', 'PENDIENTE_FIRMA_TERMINACION',
+                    'SIN_CANAL_CONTACTO', 'ERROR_NOTIFICACION'],
     ).select_related('sede')
 
     for contrato in contratos:
@@ -354,20 +404,20 @@ def alertar_contratos_urgentes():
 
         asignaciones = AsignacionCentro.objects.filter(
             sede=contrato.sede,
-            rol='DIRECTOR',
+            rol='GH',
             activo=True,
             usuario__is_active=True,
         ).select_related('usuario')
 
         for asignacion in asignaciones:
             try:
-                enviar_alerta_urgente_director(asignacion.usuario, contrato, dias_restantes)
+                enviar_alerta_urgente_gh(asignacion.usuario, contrato, dias_restantes)
 
-                # Solo escalar a PENDIENTE_DECISION_DIRECTOR si el empleado aún no
-                # firmó la NO_PRORROGA y el director no ha tomado ninguna decisión.
-                # Para PRORROGA/TERMINACION el director ya decidió — NO revertir.
+                # Solo escalar a PENDIENTE_DECISION_GH si el empleado aún no
+                # firmó la NO_PRORROGA y GH no ha tomado ninguna decisión.
+                # Para PRORROGA/TERMINACION GH ya decidió — NO revertir.
                 if contrato.estado == 'PENDIENTE_FIRMA_NO_PRORROGA':
-                    contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+                    contrato.estado = 'PENDIENTE_DECISION_GH'
                     contrato.save(update_fields=['estado'])
 
                 EventoContrato.objects.create(
@@ -376,11 +426,11 @@ def alertar_contratos_urgentes():
                     detalle={
                         'motivo': 'alerta_urgente_vencimiento',
                         'dias_restantes': dias_restantes,
-                        'director': asignacion.usuario.correo,
+                        'gh': asignacion.usuario.correo,
                     },
                 )
                 NotificacionAdmin.objects.create(
-                    tipo='alerta_urgente',
+                    tipo='alerta_urgente_gh',
                     titulo=f'URGENTE — Contrato vence en {dias_restantes} día(s): {contrato.nombre_completo}',
                     cuerpo=(
                         f'{contrato.nombre_completo} (Doc: {contrato.documento_id}) — '
