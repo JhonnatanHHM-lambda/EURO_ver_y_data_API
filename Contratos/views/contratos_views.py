@@ -517,8 +517,8 @@ class CrearContratoDemoView(APIView):
         except Exception as e:
             logger.warning(f'Demo: no se pudo encolar notificación empleado: {e}')
 
-        # Paso 2 — escalar al director (igual que revisar_contratos_proximos_vencer)
-        contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+        # Paso 2 — escalar a GH (flujo vigente: GH toma la decisión)
+        contrato.estado = 'PENDIENTE_DECISION_GH'
         contrato.save(update_fields=['estado'])
 
         EventoContrato.objects.create(
@@ -526,14 +526,14 @@ class CrearContratoDemoView(APIView):
             detalle={'motivo': 'revision_proximos_vencer', 'dias': 2, 'demo': True},
         )
 
-        director = _get_director(sede) if sede else None
-        if director:
-            from ..utils.notificaciones import enviar_alerta_director
+        ghs = _get_gh_users(sede) if sede else []
+        for gh in ghs:
+            from ..utils.notificaciones import enviar_alerta_gh
             from Usuarios.models import NotificacionAdmin
             try:
-                enviar_alerta_director(director, contrato, 2)
+                enviar_alerta_gh(gh, contrato, 2)
             except Exception as e:
-                logger.warning(f'Demo: no se pudo notificar director: {e}')
+                logger.warning(f'Demo: no se pudo notificar GH: {e}')
             NotificacionAdmin.objects.create(
                 tipo='alerta_contrato',
                 titulo=f'[DEMO] Contrato próximo a vencer — {contrato.nombre_completo}',
@@ -543,7 +543,7 @@ class CrearContratoDemoView(APIView):
                     f'{contrato.fecha_finalizacion.strftime("%d/%m/%Y")}. '
                     f'Quedan 2 día(s). Ingresa al panel y toma una decisión.'
                 ),
-                usuario=director,
+                usuario=gh,
                 contrato=contrato,
             )
 
