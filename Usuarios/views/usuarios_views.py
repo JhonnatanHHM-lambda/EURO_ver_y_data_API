@@ -93,6 +93,20 @@ class UsuariosCRUDView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @require_permission(['can_manage_users'], app_label='Usuarios')
+    @swagger_auto_schema(
+        operation_summary='Actualizar parcialmente usuario',
+        request_body=UsuarioUpdateSerializer,
+        tags=['Usuarios'],
+    )
+    def patch(self, request, pk):
+        obj = get_object_or_404(Usuario, pk=pk)
+        serializer = UsuarioUpdateSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            actualizado = serializer.save()
+            return Response(UsuarioListSerializer(actualizado).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @require_permission(['can_manage_users'], app_label='Usuarios')
     @swagger_auto_schema(operation_summary='Eliminar usuario permanentemente', tags=['Usuarios'])
     def delete(self, request, pk):
         try:
