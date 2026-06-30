@@ -49,7 +49,9 @@ class PanelResumenView(APIView):
         return Response({
             'total': qs_activos.count(),
             'pendiente_firma': pendiente_firma,
-            'pendiente_decision': qs_activos.filter(estado='PENDIENTE_DECISION_DIRECTOR').count(),
+            'pendiente_decision': qs_activos.filter(
+                estado__in=['PENDIENTE_DECISION_DIRECTOR', 'PENDIENTE_DECISION_GH']
+            ).count(),
             'firmados': qs_activos.filter(estado='FIRMADO').count(),
             'sin_canal': qs_activos.filter(estado='SIN_CANAL_CONTACTO').count(),
         })

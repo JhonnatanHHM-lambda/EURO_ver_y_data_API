@@ -27,6 +27,7 @@ class Contrato(models.Model):
     ESTADO_CHOICES = [
         ('PENDIENTE_FIRMA_NO_PRORROGA', 'Pendiente firma — no prórroga'),
         ('PENDIENTE_DECISION_DIRECTOR', 'Pendiente decisión director'),
+        ('PENDIENTE_DECISION_GH', 'Pendiente decisión GH'),
         ('PENDIENTE_CONDICIONES_GH', 'Pendiente condiciones GH'),
         ('PENDIENTE_NOTIFICACION_EMPLEADO', 'Pendiente notificación empleado'),
         ('PENDIENTE_FIRMA_PRORROGA', 'Pendiente firma — prórroga'),
