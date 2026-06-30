@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from django.core.mail import send_mail
 from django.conf import settings
 
@@ -171,7 +171,7 @@ def enviar_whatsapp_empleado(contrato):
         f'Hola {contrato.nombre_completo}, desde Euro Supermercados '
         f'te informamos que tienes una carta pendiente de firma: {firma_url}'
     )
-    logger.info(f'[WA SIMULADO] â†’ {contrato.celular}: {mensaje}')
+    logger.info(f'[WA SIMULADO] â†' {contrato.celular}: {mensaje}')
 
 
 def enviar_alerta_director(director, contrato, dias_restantes):
@@ -207,7 +207,7 @@ def enviar_alerta_director(director, contrato, dias_restantes):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Alerta director {director.correo} â†’ contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Alerta director {director.correo} â†' contrato {contrato.documento_id}')
 
 
 def enviar_alerta_sin_firma(director, contrato):
@@ -243,7 +243,7 @@ def enviar_alerta_sin_firma(director, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Alerta sin firma â†’ director {director.correo}')
+    logger.info(f'[CORREO] Alerta sin firma â†' director {director.correo}')
 
 
 def enviar_recordatorio_decision(director, contrato):
@@ -345,7 +345,7 @@ def enviar_recordatorio_decision_digest(director, contratos: list):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Digest decisiones â†’ director {director.correo} ({n} contratos)')
+    logger.info(f'[CORREO] Digest decisiones â†' director {director.correo} ({n} contratos)')
 
 
 def enviar_email_gh_decision_director(gh_usuario, contrato, tipo_decision):
@@ -386,7 +386,7 @@ def enviar_email_gh_decision_director(gh_usuario, contrato, tipo_decision):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] NotificaciÃ³n GH {gh_usuario.correo} â†’ contrato {contrato.documento_id} decisiÃ³n {tipo_decision}')
+    logger.info(f'[CORREO] NotificaciÃ³n GH {gh_usuario.correo} â†' contrato {contrato.documento_id} decisiÃ³n {tipo_decision}')
 
 
 def enviar_email_director_condiciones_listas(director, contrato):
@@ -441,7 +441,7 @@ def enviar_email_director_condiciones_listas(director, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Condiciones listas â†’ director {director.correo} contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Condiciones listas â†' director {director.correo} contrato {contrato.documento_id}')
 
 
 def enviar_email_gh_contrato_firmado(gh_usuario, contrato):
@@ -480,7 +480,7 @@ def enviar_email_gh_contrato_firmado(gh_usuario, contrato):
         html_message=_html_email(cuerpo),
         fail_silently=False,
     )
-    logger.info(f'[CORREO] Contrato firmado â†’ GH {gh_usuario.correo} contrato {contrato.documento_id}')
+    logger.info(f'[CORREO] Contrato firmado â†' GH {gh_usuario.correo} contrato {contrato.documento_id}')
 
 
 def enviar_alerta_gh(gh, contrato, dias_restantes):
@@ -681,8 +681,8 @@ def enviar_alerta_urgente_director(director, contrato, dias_restantes):
         fail_silently=False,
     )
     logger.info(
-        f’[CORREO] Alerta urgente → director {director.correo} ‘
-        f’contrato {contrato.documento_id} vence {contrato.fecha_finalizacion}’
+        f'[CORREO] Alerta urgente → director {director.correo} '
+        f'contrato {contrato.documento_id} vence {contrato.fecha_finalizacion}'
     )
 
 
@@ -690,45 +690,45 @@ def enviar_alerta_urgente_gh(gh, contrato, dias_restantes):
     """Alerta urgente a GH cuando un contrato vence en ≤2 días y requiere decisión inmediata."""
     panel = _panel_url()
     if dias_restantes == 0:
-        dias_txt = ‘¡HOY!’
-        color_dias = ‘#ef4444’
+        dias_txt = '¡HOY!'
+        color_dias = '#ef4444'
     elif dias_restantes == 1:
-        dias_txt = ‘mañana (1 día)’
-        color_dias = ‘#f59e0b’
+        dias_txt = 'mañana (1 día)'
+        color_dias = '#f59e0b'
     else:
-        dias_txt = f’en {dias_restantes} días’
-        color_dias = ‘#f59e0b’
+        dias_txt = f'en {dias_restantes} días'
+        color_dias = '#f59e0b'
 
     cuerpo = (
-        _p(f’Hola, <strong style="color:#ffffff;">{gh.nombres}</strong>’, size=15, bottom=8)
-        + f’<p style="color:#ef4444;font-size:15px;font-weight:700;margin:0 0 12px;’
-          f’font-family:-apple-system,BlinkMacSystemFont,\’Segoe UI\’,Arial,sans-serif;">’
-          f’⚠ ACCIÓN URGENTE REQUERIDA</p>’
-        + _p(f’El siguiente contrato vence ‘
-             f’<strong style="color:{color_dias};">{dias_txt}</strong> ‘
-             f’y aún no ha sido resuelto. Se requiere tu decisión inmediata.’, bottom=4)
+        _p(f'Hola, <strong style="color:#ffffff;">{gh.nombres}</strong>', size=15, bottom=8)
+        + f'<p style="color:#ef4444;font-size:15px;font-weight:700;margin:0 0 12px;'
+          f'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Arial,sans-serif;">'
+          f'⚠ ACCIÓN URGENTE REQUERIDA</p>'
+        + _p(f'El siguiente contrato vence '
+             f'<strong style="color:{color_dias};">{dias_txt}</strong> '
+             f'y aún no ha sido resuelto. Se requiere tu decisión inmediata.', bottom=4)
         + _info_table([
-            (‘Empleado’, contrato.nombre_completo),
-            (‘Documento’, f’{contrato.tipo_documento} {contrato.documento_id}’),
-            (‘Cargo’, contrato.cargo or ‘—‘),
-            (‘Vence el’, _fmt_fecha(contrato.fecha_finalizacion)),
-            (‘Estado’, contrato.estado.replace(‘_’, ‘ ‘)),
+            ('Empleado', contrato.nombre_completo),
+            ('Documento', f'{contrato.tipo_documento} {contrato.documento_id}'),
+            ('Cargo', contrato.cargo or '—'),
+            ('Vence el', _fmt_fecha(contrato.fecha_finalizacion)),
+            ('Estado', contrato.estado.replace('_', ' ')),
         ])
-        + _btn(panel, ‘Acción urgente requerida’, ‘#ef4444’)
+        + _btn(panel, 'Acción urgente requerida', '#ef4444')
         + _divider()
-        + _p(‘Ingresa al panel inmediatamente y toma la decisión correspondiente.’,
-             color=’rgba(255,255,255,0.40)’, size=11, bottom=0)
+        + _p('Ingresa al panel inmediatamente y toma la decisión correspondiente.',
+             color='rgba(255,255,255,0.40)', size=11, bottom=0)
     )
 
     send_mail(
-        subject=f’[URGENTE] Contrato vence {dias_txt} — {contrato.nombre_completo}’,
+        subject=f'[URGENTE] Contrato vence {dias_txt} — {contrato.nombre_completo}',
         message=(
-            f’Hola {gh.nombres},\n\n’
-            f’ALERTA URGENTE: El contrato de {contrato.nombre_completo} ‘
-            f’({contrato.tipo_documento} {contrato.documento_id}), cargo {contrato.cargo}, ‘
-            f’vence el {_fmt_fecha(contrato.fecha_finalizacion)} ({dias_txt}).\n\n’
-            f’Estado: {contrato.estado.replace("_", " ")}\n\n’
-            f’Panel: {panel}\n\nInversiones Euro S.A. — Gestión Humana’
+            f'Hola {gh.nombres},\n\n'
+            f'ALERTA URGENTE: El contrato de {contrato.nombre_completo} '
+            f'({contrato.tipo_documento} {contrato.documento_id}), cargo {contrato.cargo}, '
+            f'vence el {_fmt_fecha(contrato.fecha_finalizacion)} ({dias_txt}).\n\n'
+            f'Estado: {contrato.estado.replace("_", " ")}\n\n'
+            f'Panel: {panel}\n\nInversiones Euro S.A. — Gestión Humana'
         ),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[gh.correo],
@@ -736,6 +736,6 @@ def enviar_alerta_urgente_gh(gh, contrato, dias_restantes):
         fail_silently=False,
     )
     logger.info(
-        f’[CORREO] Alerta urgente GH → {gh.correo} ‘
-        f’contrato {contrato.documento_id} vence {contrato.fecha_finalizacion}’
+        f'[CORREO] Alerta urgente GH → {gh.correo} '
+        f'contrato {contrato.documento_id} vence {contrato.fecha_finalizacion}'
     )
