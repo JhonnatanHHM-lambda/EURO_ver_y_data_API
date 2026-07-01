@@ -78,6 +78,8 @@ class Usuario(BaseModel, AbstractBaseUser, PermissionsMixin):
             ('can_manage_asignaciones',       'Puede gestionar asignaciones de director/GH a sedes'),
             ('can_view_contrataciones',       'Puede ver el historial de contrataciones y documentos firmados'),
             ('can_manage_firma_gh',           'Puede gestionar la firma digital del empleador'),
+            # Optimización de correo
+            ('can_view_optimizacion_correos', 'Puede ver Optimización Correos'),
         ]
         indexes = [
             models.Index(fields=['correo']),

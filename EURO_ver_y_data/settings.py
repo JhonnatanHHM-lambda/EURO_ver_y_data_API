@@ -34,6 +34,7 @@ LOCAL_APPS = [
     'Notificaciones',
     'Trazabilidad',
     'Contratos',
+    'OptimizacionCorreos',
 ]
 
 THIRD_PARTY_APPS = [
@@ -199,8 +200,10 @@ CELERY_TASK_DEFAULT_QUEUE = 'default'
 
 # Enrutamiento de colas
 CELERY_TASK_ROUTES = {
-    'Contratos.tasks.*':     {'queue': 'contratos'},
-    'Notificaciones.tasks.*': {'queue': 'default'},
+
+    'Contratos.tasks.*': {'queue': 'contratos'},
+    'Notificaciones.tasks.*': {'queue': 'celery'},
+    'OptimizacionCorreos.tasks.*': {'queue': 'optimizacion_correos'},
 }
 
 # Swagger
