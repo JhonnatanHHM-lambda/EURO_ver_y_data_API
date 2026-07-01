@@ -32,15 +32,15 @@ def _get_gh_users(sede):
     ]
 
 
-def _get_director(sede):
-    """Retorna el primer director asignado a la sede dada."""
+def _get_directores(sede):
+    """Retorna todos los directores asignados a la sede dada."""
     if not sede:
-        return None
+        return []
     from ..models import AsignacionCentro
-    asig = AsignacionCentro.objects.filter(
-        sede=sede, rol='DIRECTOR', activo=True
-    ).select_related('usuario').first()
-    return asig.usuario if asig else None
+    return [
+        a.usuario for a in
+        AsignacionCentro.objects.filter(sede=sede, rol='DIRECTOR', activo=True).select_related('usuario')
+    ]
 
 
 class ContratosListView(APIView):
@@ -314,8 +314,8 @@ class CondicionesGHView(APIView):
             detalle={'tipo_carta': contrato.tipo_carta},
         )
 
-        director = _get_director(contrato.sede)
-        if director:
+        directores = _get_directores(contrato.sede)
+        if directores:
             from Usuarios.models import NotificacionAdmin
             from ..utils.notificaciones import enviar_email_director_condiciones_listas
             cuerpo_notif = (
@@ -323,17 +323,18 @@ class CondicionesGHView(APIView):
                 if contrato.tipo_carta == 'PRORROGA'
                 else 'GH ha definido las condiciones. Ya puedes notificar al empleado.'
             )
-            NotificacionAdmin.objects.create(
-                tipo='condiciones_gh_listas',
-                titulo=f'Condiciones listas — {contrato.nombre_completo}',
-                cuerpo=cuerpo_notif,
-                contrato=contrato,
-                usuario=director,
-            )
-            try:
-                enviar_email_director_condiciones_listas(director, contrato)
-            except Exception:
-                pass
+            for director in directores:
+                NotificacionAdmin.objects.create(
+                    tipo='condiciones_gh_listas',
+                    titulo=f'Condiciones listas — {contrato.nombre_completo}',
+                    cuerpo=cuerpo_notif,
+                    contrato=contrato,
+                    usuario=director,
+                )
+                try:
+                    enviar_email_director_condiciones_listas(director, contrato)
+                except Exception:
+                    pass
 
         return Response({'mensaje': 'Condiciones registradas. Se notificó al director.'})
 
