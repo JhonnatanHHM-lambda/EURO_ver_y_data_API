@@ -41,7 +41,7 @@ class PanelResumenView(APIView):
         from django.db.models import Q
         qs_activos = qs.exclude(estado='CANCELADO')
         # Carta pendiente de firma = tiene pdf_carta_key pero no pdf_firmado_key,
-        # independientemente del estado (incluye PENDIENTE_DECISION_DIRECTOR urgentes).
+        # independientemente del estado (incluye PENDIENTE_DECISION_GH urgentes).
         pendiente_firma = qs_activos.filter(
             Q(pdf_carta_key__isnull=False) & ~Q(pdf_carta_key=''),
             Q(pdf_firmado_key__isnull=True) | Q(pdf_firmado_key=''),
