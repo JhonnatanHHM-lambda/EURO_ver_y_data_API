@@ -109,11 +109,11 @@ class ConfirmarFirmaView(APIView):
         contrato.firma_canvas_data = firma_data
         contrato.ip_confirmacion = ip
         contrato.token_usado = True
-        # NO_PRORROGA firmada = empleado reconoce el vencimiento, pero el director
+        # NO_PRORROGA firmada = empleado reconoce el vencimiento, pero GH
         # aún debe decidir prórroga o terminación → sigue pendiente de decisión.
         # PRORROGA / TERMINACION firmadas = ciclo completo → FIRMADO.
         if contrato.tipo_carta == 'NO_PRORROGA':
-            contrato.estado = 'PENDIENTE_DECISION_DIRECTOR'
+            contrato.estado = 'PENDIENTE_DECISION_GH'
         else:
             contrato.estado = 'FIRMADO'
         contrato.fecha_firma = timezone.now()

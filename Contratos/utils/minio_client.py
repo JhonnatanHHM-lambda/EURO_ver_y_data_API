@@ -73,9 +73,8 @@ def delete_from_minio(key: str):
 
 def generate_presigned_url(key: str, expires_seconds: int = 3600) -> str:
     from datetime import timedelta
-    # Asegurar bucket con cliente interno (siempre alcanzable desde Docker)
-    _ensure_bucket(get_minio_client(), _get_bucket())
-    # Generar URL con cliente público (region pre-seteada evita el HTTP call de discovery)
+    # presigned_get_object es puramente local (HMAC); no necesita verificar el bucket.
+    # _ensure_bucket solo corresponde al path de escritura (upload_to_minio).
     return get_public_minio_client().presigned_get_object(
         _get_bucket(), key, expires=timedelta(seconds=expires_seconds)
     )
