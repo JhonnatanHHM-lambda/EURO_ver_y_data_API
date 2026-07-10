@@ -83,5 +83,8 @@ tmp_optimizacion_correos/radian_email_flow/*
 !tmp_optimizacion_correos/radian_email_flow/README.md
 tmp_optimizacion_correos/
 
+# ── Scripts de exploración/investigación de datos (no forman parte de la app) ──
+scripts/
+
 
 
