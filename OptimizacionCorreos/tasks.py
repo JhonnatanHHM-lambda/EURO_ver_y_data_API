@@ -33,6 +33,7 @@ def ejecutar_consolidacion(self, ejecucion_id: int):
     )
     from .utils.crypto_utils import decrypt_credential
     from .utils.dian_client import DianClient
+    from .utils import session_cache
     from .utils.xml_parser import parse_zip, parse_invoice_element, _extraer_invoice_de_attached
     from .utils.zimbra_client import ZimbraHttpClient
     from .utils.conciliacion import conciliar
@@ -65,16 +66,33 @@ def ejecutar_consolidacion(self, ejecucion_id: int):
 
         # ── 2 & 3. Autenticar RADIAN y listar documentos ─────────────────────
         cc_rep = decrypt_credential('OC_DIAN_CC_REP_ENC')
-        cli = DianClient(cc_rep=cc_rep)
-        auth_result = cli.autenticar()
-        if not auth_result.get('autenticado'):
-            raise RuntimeError('RADIAN no quedo autenticado; no se listan documentos.')
+        cli = session_cache.get_cliente_vivo()
+        if cli is None:
+            cli = DianClient(cc_rep=cc_rep)
+            auth_result = cli.autenticar()
+            if not auth_result.get('autenticado'):
+                session_cache.clear()
+                raise RuntimeError('RADIAN no quedo autenticado; no se listan documentos.')
+            session_cache.set_cliente(cli)
 
-        resultado_dian = cli.listar_documentos(
-            fecha_desde=fecha_desde,
-            fecha_hasta=fecha_hasta,
-            length=500,
-        )
+        try:
+            resultado_dian = cli.listar_documentos(
+                fecha_desde=fecha_desde,
+                fecha_hasta=fecha_hasta,
+                length=500,
+            )
+        except Exception:
+            session_cache.clear()
+            cli = DianClient(cc_rep=cc_rep)
+            auth_result = cli.autenticar()
+            if not auth_result.get('autenticado'):
+                raise RuntimeError('RADIAN no quedo autenticado; no se listan documentos.')
+            session_cache.set_cliente(cli)
+            resultado_dian = cli.listar_documentos(
+                fecha_desde=fecha_desde,
+                fecha_hasta=fecha_hasta,
+                length=500,
+            )
         documentos = resultado_dian.get('data', [])
 
         # ── 4. Descargar ZIPs y guardar FacturaRadian ─────────────────────────

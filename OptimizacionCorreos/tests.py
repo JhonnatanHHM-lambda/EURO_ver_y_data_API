@@ -274,3 +274,27 @@ class DianClientSessionTests(TestCase):
         client = DianClient(nit="1", cc_rep="1")
 
         self.assertTrue(client._looks_like_login_response(response))
+
+    def test_extrae_request_verification_token_desde_input(self):
+        html = """
+        <html>
+          <input type="hidden" name="__RequestVerificationToken" value="abc123" />
+        </html>
+        """
+
+        self.assertEqual(
+            DianClient._extract_request_verification_token(html),
+            "abc123",
+        )
+
+    def test_extrae_request_verification_token_desde_javascript(self):
+        html = """
+        <script>
+          window.form = {"__RequestVerificationToken": "xyz789"};
+        </script>
+        """
+
+        self.assertEqual(
+            DianClient._extract_request_verification_token(html),
+            "xyz789",
+        )

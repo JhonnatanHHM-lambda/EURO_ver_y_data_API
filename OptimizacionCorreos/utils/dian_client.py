@@ -20,6 +20,7 @@ from __future__ import annotations
 import calendar
 import datetime as dt
 import json
+import re
 import time
 from urllib.parse import quote
 from pathlib import Path
@@ -98,6 +99,43 @@ class DianClient:
             return
         page.screenshot(path=str(self.evidence_dir / filename), full_page=True)
 
+    def _write_evidence_text(self, filename: str, content: str) -> None:
+        if not self.evidence_dir:
+            return
+        (self.evidence_dir / filename).write_text(content, encoding="utf-8", errors="ignore")
+
+    @staticmethod
+    def _extract_request_verification_token(html: str) -> Optional[str]:
+        """
+        Extrae el antiforgery token de RADIAN desde varias formas posibles.
+
+        El portal normalmente lo publica como input oculto, pero cuando cambia
+        la plantilla puede aparecer en JavaScript o en atributos con otro orden.
+        """
+        soup = BeautifulSoup(html or "", "html.parser")
+        token_input = soup.find("input", {"name": "__RequestVerificationToken"})
+        if token_input and token_input.get("value"):
+            return token_input.get("value")
+
+        token_input = soup.find("input", {"id": "__RequestVerificationToken"})
+        if token_input and token_input.get("value"):
+            return token_input.get("value")
+
+        meta = soup.find("meta", {"name": "__RequestVerificationToken"})
+        if meta and meta.get("content"):
+            return meta.get("content")
+
+        patterns = (
+            r'name=["\']__RequestVerificationToken["\'][^>]*value=["\']([^"\']+)',
+            r'value=["\']([^"\']+)["\'][^>]*name=["\']__RequestVerificationToken["\']',
+            r'__RequestVerificationToken["\']?\s*[:=]\s*["\']([^"\']+)',
+        )
+        for pattern in patterns:
+            match = re.search(pattern, html or "", flags=re.IGNORECASE | re.DOTALL)
+            if match:
+                return match.group(1)
+        return None
+
     # ── Warm-up de sesión vía Playwright (Azure WAF JS Challenge) ───────────
     def _warmup_con_playwright(self) -> tuple[str, str]:
         """
@@ -112,51 +150,72 @@ class DianClient:
         """
         from playwright.sync_api import sync_playwright
         s = get_settings()
+        content = ""
+        cookies = []
+        final_url = ""
+        title = ""
         with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=not self.headful,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                ],
-            )
-            ctx = browser.new_context(
-                user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/131.0.0.0 Safari/537.36"),
-                viewport={"width": 1280, "height": 800},
-                locale="es-CO", timezone_id="America/Bogota",
-            )
-            # Stealth: el WAF detecta navigator.webdriver, ausencia de
-            # plugins y otros marcadores de automation.
-            ctx.add_init_script("""
-                Object.defineProperty(navigator,'webdriver',{get:()=>undefined});
-                Object.defineProperty(navigator,'languages',{get:()=>['es-CO','es','en']});
-                Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});
-                window.chrome = { runtime: {} };
-            """)
-            page = ctx.new_page()
-            page.goto(s.dian_login_url, wait_until="domcontentloaded", timeout=45000)
-            # Esperar a que el JS challenge se ejecute y deje la cookie
-            page.wait_for_timeout(5000)
-            self._capture_page(page, "01_radian_login_warmup.png")
-            content = page.content()
-            cookies = ctx.cookies()
-            browser.close()
+            for intento in range(1, 3):
+                browser = p.chromium.launch(
+                    headless=not self.headful,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                    ],
+                )
+                ctx = browser.new_context(
+                    user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                  "Chrome/131.0.0.0 Safari/537.36"),
+                    viewport={"width": 1280, "height": 800},
+                    locale="es-CO", timezone_id="America/Bogota",
+                )
+                # Stealth: el WAF detecta navigator.webdriver, ausencia de
+                # plugins y otros marcadores de automation.
+                ctx.add_init_script("""
+                    Object.defineProperty(navigator,'webdriver',{get:()=>undefined});
+                    Object.defineProperty(navigator,'languages',{get:()=>['es-CO','es','en']});
+                    Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});
+                    window.chrome = { runtime: {} };
+                """)
+                page = ctx.new_page()
+                page.goto(s.dian_login_url, wait_until="domcontentloaded", timeout=45000)
+                try:
+                    page.wait_for_selector(
+                        "input[name='__RequestVerificationToken']",
+                        timeout=12000 if intento == 1 else 20000,
+                    )
+                except Exception:
+                    # El portal puede estar resolviendo el JS challenge; damos
+                    # tiempo adicional y reintentamos una vez antes de fallar.
+                    page.wait_for_timeout(5000 if intento == 1 else 10000)
+                self._capture_page(page, f"01_radian_login_warmup_intento_{intento}.png")
+                content = page.content()
+                cookies = ctx.cookies()
+                final_url = page.url
+                try:
+                    title = page.title()
+                except Exception:
+                    title = ""
+                browser.close()
+                if self._extract_request_verification_token(content):
+                    break
         # Trasladar cookies al cliente HTTP normal
         for c in cookies:
             self.session.cookies.set(c["name"], c["value"],
                                        domain=c.get("domain", "catalogo-vpfe.dian.gov.co"),
                                        path=c.get("path", "/"))
         # Extraer __RequestVerificationToken del HTML
-        soup = BeautifulSoup(content, "html.parser")
-        token_input = soup.find("input", {"name": "__RequestVerificationToken"})
-        if not token_input:
+        request_token = self._extract_request_verification_token(content)
+        if not request_token:
+            self._write_evidence_text("01_radian_login_warmup.html", content)
+            cookie_names = ", ".join(sorted(c.get("name", "") for c in cookies if c.get("name")))
             raise DianAuthError(
                 "Warm-up Playwright no encontró __RequestVerificationToken. "
-                "Posible cambio en el HTML del portal DIAN o JS challenge fallido."
+                "Posible cambio en el HTML del portal DIAN o JS challenge fallido. "
+                f"url_final={final_url!r} titulo={title!r} cookies=[{cookie_names}]"
             )
-        return token_input.get("value") or "", content
+        return request_token, content
 
     # ── Paso 1+2: solicitud que dispara el OTP ──────────────────────────────
     def solicitar_otp(self) -> dict:
@@ -310,9 +369,7 @@ class DianClient:
             self._capture_page(page, "05_radian_received_validated.png")
             current_url = page.url
             content = page.content()
-            soup = BeautifulSoup(content, "html.parser")
-            token_input = soup.find("input", {"name": "__RequestVerificationToken"})
-            afv_token = token_input.get("value") if token_input else None
+            afv_token = self._extract_request_verification_token(content)
             cookies = ctx.cookies()
             browser.close()
 
