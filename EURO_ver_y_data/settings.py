@@ -34,6 +34,8 @@ LOCAL_APPS = [
     'Notificaciones',
     'Trazabilidad',
     'Contratos',
+    'OptimizacionCorreos',
+    'Dashboard',
 ]
 
 THIRD_PARTY_APPS = [
@@ -192,6 +194,18 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'Contratos.tasks.alertar_contratos_urgentes',
         'schedule': crontab(hour=7, minute=20),
     },
+    'dashboard-sync-ausentismo': {
+        'task': 'Dashboard.tasks.sync_ausentismo_from_siesa',
+        'schedule': crontab(hour=7, minute=0),
+    },
+    'dashboard-sync-nomina': {
+        'task': 'Dashboard.tasks.sync_nomina_from_siesa',
+        'schedule': crontab(hour=7, minute=30),
+    },
+    'dashboard-sync-rotacion': {
+        'task': 'Dashboard.tasks.sync_rotacion_from_siesa',
+        'schedule': crontab(hour=7, minute=25),
+    },
 }
 
 # Celery — cola predeterminada para tareas sin ruta explícita
@@ -199,8 +213,10 @@ CELERY_TASK_DEFAULT_QUEUE = 'default'
 
 # Enrutamiento de colas
 CELERY_TASK_ROUTES = {
-    'Contratos.tasks.*':     {'queue': 'contratos'},
-    'Notificaciones.tasks.*': {'queue': 'default'},
+    'Contratos.tasks.*':          {'queue': 'contratos'},
+    'Notificaciones.tasks.*':     {'queue': 'default'},
+    'OptimizacionCorreos.tasks.*': {'queue': 'optimizacion_correos'},
+    'Dashboard.tasks.*':          {'queue': 'dashboard'},
 }
 
 # Swagger

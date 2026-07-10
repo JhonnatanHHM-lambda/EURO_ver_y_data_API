@@ -1,0 +1,23 @@
+name: Proteger master — solo dev puede mergear
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  check-source-branch:
+    name: Verificar rama origen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rechazar si la fuente no es dev
+        if: github.head_ref != 'dev'
+        run: |
+          echo "❌ Solo la rama 'dev' puede hacer merge a master."
+          echo "Rama origen detectada: ${{ github.head_ref }}"
+          echo ""
+          echo "Flujo correcto:  feat/* ──► dev ──► master"
+          exit 1
+
+      - name: Aprobado
+        run: |
+          echo "✅ Rama origen es 'dev' — merge a master permitido."
