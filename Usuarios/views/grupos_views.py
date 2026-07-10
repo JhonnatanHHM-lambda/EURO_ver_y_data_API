@@ -77,6 +77,10 @@ class PermisosListView(APIView):
         'can_manage_asignaciones',
         'can_view_contrataciones',
         'can_manage_firma_gh',
+        # Migración Masiva de Archivo
+        'can_view_migracion_masiva_archivo',
+        'can_manage_migracion_masiva_archivo',
+        'can_upload_migracion_masiva_archivo_saia',
     ]
 
     @require_permission(['can_manage_roles'], app_label='Usuarios')

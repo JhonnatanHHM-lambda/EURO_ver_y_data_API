@@ -33,6 +33,10 @@ pandas==2.2.3
 # PDF / Documentos
 reportlab==4.3.1
 python-docx==1.1.2
+pytesseract>=0.3.13
+PyMuPDF>=1.24.0
+pypdf>=5.0.0
+opencv-python-headless>=4.8.0
 
 # Storage
 minio==7.2.20
@@ -61,4 +65,3 @@ beautifulsoup4>=4.12
 playwright>=1.40.0
 msal>=1.28.0
 requests>=2.31
-

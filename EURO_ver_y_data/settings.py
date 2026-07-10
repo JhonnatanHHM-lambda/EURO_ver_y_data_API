@@ -35,6 +35,7 @@ LOCAL_APPS = [
     'Trazabilidad',
     'Contratos',
     'OptimizacionCorreos',
+    'migracion_masiva_archivo',
 ]
 
 THIRD_PARTY_APPS = [
@@ -131,6 +132,17 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(os.getenv('MEDIA_ROOT', BASE_DIR / 'media'))
+
+MIGRACION_ARCHIVOS_MEDIA_ROOT = Path(
+    os.getenv('MIGRACION_ARCHIVOS_MEDIA_ROOT', MEDIA_ROOT / 'migracion_masiva_archivo')
+)
+MIGRACION_ARCHIVOS_TEMP_ROOT = Path(
+    os.getenv('MIGRACION_ARCHIVOS_TEMP_ROOT', BASE_DIR / 'tmp_migracion_masiva_archivo')
+)
+MIGRACION_ARCHIVOS_MAX_UPLOAD_MB = int(os.getenv('MIGRACION_ARCHIVOS_MAX_UPLOAD_MB', '100'))
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email — Microsoft Graph API (Office 365)
@@ -203,6 +215,7 @@ CELERY_TASK_ROUTES = {
     'Contratos.tasks.*':          {'queue': 'contratos'},
     'Notificaciones.tasks.*':     {'queue': 'default'},
     'OptimizacionCorreos.tasks.*': {'queue': 'optimizacion_correos'},
+    'migracion_masiva_archivo.tasks.*': {'queue': 'migracion_masiva_archivo'},
 }
 
 # Swagger
