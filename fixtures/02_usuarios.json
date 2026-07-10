@@ -1,0 +1,91 @@
+[
+{
+  "model": "Usuarios.usuario",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$720000$wioMDcknwdCH6s4WmSvneT$/uA3g78PaJ3tB4vIrJS9L8PO6WpWkj8Uf+g7Os9nz+Y=",
+    "last_login": null,
+    "creado": "2026-06-01T19:04:07.220Z",
+    "modificado": "2026-06-16T15:19:27.374Z",
+    "estado": true,
+    "cedula": "0000000001",
+    "correo": "jonnathan.henao@lambdaanalytics.co",
+    "nombres": "Jonnathan",
+    "apellidos": "Admin",
+    "genero": "M",
+    "codigo": "TWqRGZA9",
+    "fecha_nacimiento": null,
+    "telefono": "3158976421",
+    "reset_password_token": null,
+    "reset_password_token_expires_at": null,
+    "is_staff": true,
+    "is_superuser": true,
+    "is_active": true,
+    "groups": [
+      1
+    ],
+    "user_permissions": [
+      83,
+      82,
+      64,
+      65
+    ]
+  }
+},
+{
+  "model": "Usuarios.usuario",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$720000$b4cSX5D6PsSmlj098iW0hl$cWbUpjNkERqMarlp3GsegCAQZF0YdeO5o0xInyhl+KA=",
+    "last_login": null,
+    "creado": "2026-06-04T15:28:11.810Z",
+    "modificado": "2026-06-16T15:19:40.894Z",
+    "estado": true,
+    "cedula": "1265847596",
+    "correo": "hhmjhonatan@gmail.com",
+    "nombres": "Jhonnatan",
+    "apellidos": "Gest. Humana",
+    "genero": "M",
+    "codigo": "ukTTcoSZ",
+    "fecha_nacimiento": null,
+    "telefono": "",
+    "reset_password_token": null,
+    "reset_password_token_expires_at": null,
+    "is_staff": false,
+    "is_superuser": false,
+    "is_active": true,
+    "groups": [
+      2
+    ],
+    "user_permissions": []
+  }
+},
+{
+  "model": "Usuarios.usuario",
+  "pk": 3,
+  "fields": {
+    "password": "pbkdf2_sha256$720000$6ST9WTDBthqsBcsGXAHuyK$QuH/op+E0V2/P9ajUlmy+taSg8JuFr/eJ/JTbxo2hmI=",
+    "last_login": null,
+    "creado": "2026-06-10T18:25:01.388Z",
+    "modificado": "2026-06-10T18:25:01.388Z",
+    "estado": true,
+    "cedula": "1587694532",
+    "correo": "lambda.jhonnatan@gmail.com",
+    "nombres": "Jhonnatan",
+    "apellidos": "Director",
+    "genero": "M",
+    "codigo": "E82Bogoz",
+    "fecha_nacimiento": null,
+    "telefono": "",
+    "reset_password_token": null,
+    "reset_password_token_expires_at": null,
+    "is_staff": false,
+    "is_superuser": false,
+    "is_active": true,
+    "groups": [
+      3
+    ],
+    "user_permissions": []
+  }
+}
+]

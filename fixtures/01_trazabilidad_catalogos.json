@@ -1,0 +1,633 @@
+[
+{
+  "model": "Trazabilidad.origen",
+  "pk": 1,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.839Z",
+    "modificado": "2026-06-04T15:13:44.839Z",
+    "estado": true,
+    "nombre": "COOPISER",
+    "descripcion": "Base de datos COOPISER"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 2,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.843Z",
+    "modificado": "2026-06-04T15:13:44.843Z",
+    "estado": true,
+    "nombre": "EXELA",
+    "descripcion": "Base de datos EXELA"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 3,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.844Z",
+    "modificado": "2026-06-04T15:13:44.844Z",
+    "estado": true,
+    "nombre": "JG EFECTIVOS",
+    "descripcion": "Base de datos JG Efectivos"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 4,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.844Z",
+    "modificado": "2026-06-04T15:13:44.844Z",
+    "estado": true,
+    "nombre": "EURO ANTIGUA",
+    "descripcion": "Base de datos Euro Viejita / Sustitución Patronal"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 5,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.845Z",
+    "modificado": "2026-06-04T15:13:44.845Z",
+    "estado": true,
+    "nombre": "TEMPORAL BARRANQUILLA",
+    "descripcion": "Temporal Barranquilla"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 6,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.846Z",
+    "modificado": "2026-06-04T15:13:44.846Z",
+    "estado": true,
+    "nombre": "COMPLEMENTOS HUMANOS",
+    "descripcion": "Complementos Humanos"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 7,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.847Z",
+    "modificado": "2026-06-04T15:13:44.847Z",
+    "estado": true,
+    "nombre": "TIEMPOS",
+    "descripcion": "Temporal Tiempos"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 8,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.848Z",
+    "modificado": "2026-06-04T15:13:44.848Z",
+    "estado": true,
+    "nombre": "TIME JOBS",
+    "descripcion": "Temporal Time Jobs"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 9,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.849Z",
+    "modificado": "2026-06-04T15:13:44.849Z",
+    "estado": true,
+    "nombre": "APRENDICES",
+    "descripcion": "Base de datos Aprendices SENA"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 10,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.850Z",
+    "modificado": "2026-06-04T15:13:44.850Z",
+    "estado": true,
+    "nombre": "ENTREVISTAS",
+    "descripcion": "Registro de entrevistas"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 11,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.851Z",
+    "modificado": "2026-06-04T15:13:44.851Z",
+    "estado": true,
+    "nombre": "EXTRAS",
+    "descripcion": "Personal extras"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 12,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.852Z",
+    "modificado": "2026-06-04T15:13:44.852Z",
+    "estado": true,
+    "nombre": "JIRO",
+    "descripcion": "Base de datos JIRO"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 13,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.853Z",
+    "modificado": "2026-06-04T15:13:44.853Z",
+    "estado": true,
+    "nombre": "PERSONAL RETIRADO",
+    "descripcion": "Personal retirado directo Euro"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 14,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.854Z",
+    "modificado": "2026-06-04T15:13:44.854Z",
+    "estado": true,
+    "nombre": "INGRESOS",
+    "descripcion": "Formato de ingresos nuevos"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 15,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.855Z",
+    "modificado": "2026-06-04T15:13:44.855Z",
+    "estado": true,
+    "nombre": "DOTACION",
+    "descripcion": "Segunda entrega dotación"
+  }
+},
+{
+  "model": "Trazabilidad.origen",
+  "pk": 16,
+  "fields": {
+    "creado": "2026-06-04T15:13:44.856Z",
+    "modificado": "2026-06-04T15:13:44.856Z",
+    "estado": true,
+    "nombre": "OTRO",
+    "descripcion": "Otro origen no listado"
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 16,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.370Z",
+    "modificado": "2026-06-03T14:19:52.370Z",
+    "estado": true,
+    "nombre": "Euro Frontera",
+    "ciudad": "Itagüí",
+    "codigo": "FRO",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 17,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.372Z",
+    "modificado": "2026-06-03T14:19:52.372Z",
+    "estado": true,
+    "nombre": "Euro Mayorista",
+    "ciudad": "Medellín",
+    "codigo": "MAY",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 18,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.373Z",
+    "modificado": "2026-06-03T14:19:52.373Z",
+    "estado": true,
+    "nombre": "Euro Florida",
+    "ciudad": "Medellín",
+    "codigo": "FLO",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 19,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.374Z",
+    "modificado": "2026-06-03T14:19:52.374Z",
+    "estado": true,
+    "nombre": "Euro Laureles",
+    "ciudad": "Medellín",
+    "codigo": "LAU",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 20,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.374Z",
+    "modificado": "2026-06-03T14:19:52.374Z",
+    "estado": true,
+    "nombre": "Euro Los Bernal",
+    "ciudad": "Medellín",
+    "codigo": "LOB",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 21,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.375Z",
+    "modificado": "2026-06-03T14:19:52.375Z",
+    "estado": true,
+    "nombre": "Euro Sabaneta",
+    "ciudad": "Sabaneta",
+    "codigo": "SAB",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 22,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.376Z",
+    "modificado": "2026-06-03T14:19:52.376Z",
+    "estado": true,
+    "nombre": "Euro Guadalcanal",
+    "ciudad": "Medellín",
+    "codigo": "GUA",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 23,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.377Z",
+    "modificado": "2026-06-03T14:19:52.377Z",
+    "estado": true,
+    "nombre": "Euro Palmas",
+    "ciudad": "Medellín",
+    "codigo": "VEG",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 24,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.378Z",
+    "modificado": "2026-06-03T14:19:52.378Z",
+    "estado": true,
+    "nombre": "Euro Niquia",
+    "ciudad": "Bello",
+    "codigo": "NIQ",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 25,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.380Z",
+    "modificado": "2026-06-03T14:19:52.380Z",
+    "estado": true,
+    "nombre": "Euro Itagui",
+    "ciudad": "Itagüí",
+    "codigo": "ITA",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 26,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.381Z",
+    "modificado": "2026-06-03T14:19:52.381Z",
+    "estado": true,
+    "nombre": "Euro Barbosa",
+    "ciudad": "Barbosa",
+    "codigo": "BAR",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 27,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.382Z",
+    "modificado": "2026-06-03T14:19:52.382Z",
+    "estado": true,
+    "nombre": "Euro Marinilla",
+    "ciudad": "Marinilla",
+    "codigo": "MAR",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 28,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.382Z",
+    "modificado": "2026-06-03T14:19:52.382Z",
+    "estado": true,
+    "nombre": "Euro Bello",
+    "ciudad": "Bello",
+    "codigo": "BEL",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 29,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.383Z",
+    "modificado": "2026-06-03T14:19:52.383Z",
+    "estado": true,
+    "nombre": "Euro Castilla",
+    "ciudad": "Medellín",
+    "codigo": "ESC",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 30,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.384Z",
+    "modificado": "2026-06-03T14:19:52.384Z",
+    "estado": true,
+    "nombre": "Euro Llanogrande",
+    "ciudad": "Rionegro",
+    "codigo": "LLA",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 31,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.385Z",
+    "modificado": "2026-06-03T14:19:52.385Z",
+    "estado": true,
+    "nombre": "Euro Arkadia 80",
+    "ciudad": "Medellín",
+    "codigo": "ACA",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 32,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.386Z",
+    "modificado": "2026-06-03T14:19:52.386Z",
+    "estado": true,
+    "nombre": "Euro Terracina",
+    "ciudad": "Envigado",
+    "codigo": "TER",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 33,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.387Z",
+    "modificado": "2026-06-03T14:19:52.387Z",
+    "estado": true,
+    "nombre": "Euro Murano",
+    "ciudad": "Envigado",
+    "codigo": "MUR",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 34,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.388Z",
+    "modificado": "2026-06-03T14:19:52.388Z",
+    "estado": true,
+    "nombre": "Euro Mixy",
+    "ciudad": "Medellín",
+    "codigo": "MIX",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 35,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.389Z",
+    "modificado": "2026-06-03T14:19:52.389Z",
+    "estado": true,
+    "nombre": "Euro Carnaval Barranquilla",
+    "ciudad": "Barranquilla",
+    "codigo": "CAR",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 36,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.390Z",
+    "modificado": "2026-06-03T14:19:52.390Z",
+    "estado": true,
+    "nombre": "Euro La Inferior",
+    "ciudad": "Medellín",
+    "codigo": "SAL",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 37,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.391Z",
+    "modificado": "2026-06-03T14:19:52.391Z",
+    "estado": true,
+    "nombre": "Euro Gran Manzana",
+    "ciudad": "Medellín",
+    "codigo": "MAN",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 38,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.392Z",
+    "modificado": "2026-06-03T14:19:52.392Z",
+    "estado": true,
+    "nombre": "Euro Places Monteria",
+    "ciudad": "Montería",
+    "codigo": "MON",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 39,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.392Z",
+    "modificado": "2026-06-03T14:19:52.392Z",
+    "estado": true,
+    "nombre": "Euro Nuestro Monteria",
+    "ciudad": "Montería",
+    "codigo": "NUM",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 40,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.393Z",
+    "modificado": "2026-06-03T14:19:52.393Z",
+    "estado": true,
+    "nombre": "Big Mayorista",
+    "ciudad": "Medellín",
+    "codigo": "BIG",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 41,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.394Z",
+    "modificado": "2026-06-03T14:19:52.394Z",
+    "estado": true,
+    "nombre": "Big Castilla",
+    "ciudad": "Medellín",
+    "codigo": "BIG-CASTILLA",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 42,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.395Z",
+    "modificado": "2026-06-03T14:19:52.395Z",
+    "estado": true,
+    "nombre": "Big Laureles",
+    "ciudad": "Medellín",
+    "codigo": "LAL",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 43,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.397Z",
+    "modificado": "2026-06-03T14:19:52.397Z",
+    "estado": true,
+    "nombre": "Big Caldas",
+    "ciudad": "Caldas",
+    "codigo": "CAL",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 44,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.398Z",
+    "modificado": "2026-06-03T14:19:52.398Z",
+    "estado": true,
+    "nombre": "Big Cristóbal",
+    "ciudad": "Medellín",
+    "codigo": "CRI",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 45,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.399Z",
+    "modificado": "2026-06-03T14:19:52.399Z",
+    "estado": true,
+    "nombre": "Big Palace",
+    "ciudad": "Medellín",
+    "codigo": "PAL",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 46,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.399Z",
+    "modificado": "2026-06-03T14:19:52.399Z",
+    "estado": true,
+    "nombre": "CEDI",
+    "ciudad": "Medellín",
+    "codigo": "CED",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 47,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.400Z",
+    "modificado": "2026-06-03T14:19:52.400Z",
+    "estado": true,
+    "nombre": "Desposte",
+    "ciudad": "Medellín",
+    "codigo": "DES",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 48,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.401Z",
+    "modificado": "2026-06-03T14:19:52.401Z",
+    "estado": true,
+    "nombre": "Administracion",
+    "ciudad": "Medellín",
+    "codigo": "ADM",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 49,
+  "fields": {
+    "creado": "2026-06-03T14:19:52.402Z",
+    "modificado": "2026-06-03T14:19:52.402Z",
+    "estado": true,
+    "nombre": "Acopio",
+    "ciudad": "Medellín",
+    "codigo": "OPS-ACOPIO",
+    "dias_alerta_director": 5
+  }
+},
+{
+  "model": "Trazabilidad.sede",
+  "pk": 53,
+  "fields": {
+    "creado": "2026-06-22T20:54:59.495Z",
+    "modificado": "2026-06-22T20:54:59.495Z",
+    "estado": true,
+    "nombre": "Euro Rosales Barranquilla",
+    "ciudad": "Barranquilla",
+    "codigo": "ROS",
+    "dias_alerta_director": 60
+  }
+}
+]
