@@ -563,7 +563,24 @@ def resolver_carpeta_secundaria_automatica(scanned_documents):
     Ruta resuelta: Escritorio → GestionDocumental(192.168.1.245) →
                    ARCHIVO CENTRAL → DIGITALIZACIÓN → COMPROBANTES CONTABLES → {identificador}
     Devuelve la ruta como string o None si no se puede resolver.
+
+    Depende de un acceso directo .lnk de Windows resuelto vía win32com, por lo que en
+    el despliegue Web (worker Linux) no es portable. Se deshabilita explícitamente por
+    configuración (MIGRACION_ARCHIVOS_CARPETA_SECUNDARIA_HABILITADA=False por defecto)
+    en vez de dejar que win32com falle en silencio — ver INFRA_MIGRACION_MASIVA_ARCHIVO.md.
     """
+    from django.conf import settings
+
+    if not getattr(settings, 'MIGRACION_ARCHIVOS_CARPETA_SECUNDARIA_HABILITADA', False):
+        import logging
+
+        logging.getLogger('migracion_masiva_archivo').info(
+            'Carpeta secundaria deshabilitada por configuracion '
+            '(MIGRACION_ARCHIVOS_CARPETA_SECUNDARIA_HABILITADA=False). '
+            'No se buscara PEL faltantes en el servidor 245.'
+        )
+        return None
+
     identifier = _detect_batch_identifier(scanned_documents)
     if not identifier:
         return None

@@ -11,11 +11,41 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# En DEBUG (dev local) se acepta cualquier host por conveniencia. En producción
+# se exige una lista explícita vía ALLOWED_HOSTS (mismo patrón que
+# CORS_ALLOWED_ORIGINS más abajo); 'localhost'/'127.0.0.1' se agregan siempre
+# porque el healthcheck de docker-compose.yml llama a la API como
+# http://localhost:8000 desde dentro del propio contenedor.
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [
+        host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',') if host.strip()
+    ] + ['localhost', '127.0.0.1']
 
 # Cuando Django está detrás de Nginx con SSL, build_absolute_uri usa https://
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
+
+# Cookies seguras + redirect forzado a HTTPS. Default False a propósito: hoy no
+# está confirmado cuál config de nginx/*.conf está realmente activa en el
+# servidor de producción, y algunas de ellas (ip.conf, euro.conf) sirven la API
+# por HTTP plano sin certificado. Activar esto sin HTTPS real en frente rompe el
+# sitio (bucle de redirect, cookies que el navegador nunca llega a enviar).
+# Activar SECURE_SSL_ENABLED=True en el .env del servidor SOLO después de
+# confirmar que ese servidor sirve la API exclusivamente por HTTPS.
+SECURE_SSL_ENABLED = os.getenv('SECURE_SSL_ENABLED', 'False') == 'True'
+if SECURE_SSL_ENABLED:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# HSTS es más agresivo y difícil de revertir (el navegador recuerda la política
+# de "solo HTTPS" durante el tiempo configurado, incluso si luego se desactiva
+# el certificado). Se controla aparte de SECURE_SSL_ENABLED; la recomendación de
+# Django es empezar con un valor bajo (ej. 3600 = 1 hora) y solo subirlo a algo
+# como 31536000 (1 año) una vez confirmado que todo sigue funcionando por HTTPS.
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
 
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -142,6 +172,13 @@ MIGRACION_ARCHIVOS_TEMP_ROOT = Path(
     os.getenv('MIGRACION_ARCHIVOS_TEMP_ROOT', BASE_DIR / 'tmp_migracion_masiva_archivo')
 )
 MIGRACION_ARCHIVOS_MAX_UPLOAD_MB = int(os.getenv('MIGRACION_ARCHIVOS_MAX_UPLOAD_MB', '100'))
+MIGRACION_ARCHIVOS_SAIA_LIMITE = int(os.getenv('MIGRACION_ARCHIVOS_SAIA_LIMITE', '70'))
+# Decisión de despliegue: servidor Linux → la función de "carpeta secundaria"
+# (services/continuidad_service.py, resuelve accesos directos .lnk de Windows vía
+# win32com) no es portable y queda deshabilitada por diseño, no por fallo silencioso.
+MIGRACION_ARCHIVOS_CARPETA_SECUNDARIA_HABILITADA = (
+    os.getenv('MIGRACION_ARCHIVOS_CARPETA_SECUNDARIA_HABILITADA', 'False') == 'True'
+)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -204,6 +241,20 @@ CELERY_BEAT_SCHEDULE = {
     'contratos-alertar-urgentes': {
         'task': 'Contratos.tasks.alertar_contratos_urgentes',
         'schedule': crontab(hour=7, minute=20),
+    },
+    # Migración Masiva de Archivo — retención de disco (logs, screenshots SAIA,
+    # carpetas de uploads de lotes terminados). Ver INFRA_MIGRACION_MASIVA_ARCHIVO.md.
+    'migracion-masiva-archivo-purgar-logs': {
+        'task': 'migracion_masiva_archivo.tasks.purgar_logs_antiguos',
+        'schedule': crontab(hour=3, minute=0),
+    },
+    'migracion-masiva-archivo-purgar-screenshots-saia': {
+        'task': 'migracion_masiva_archivo.tasks.purgar_screenshots_saia',
+        'schedule': crontab(hour=3, minute=10),
+    },
+    'migracion-masiva-archivo-purgar-uploads': {
+        'task': 'migracion_masiva_archivo.tasks.purgar_uploads_antiguos',
+        'schedule': crontab(hour=3, minute=20),
     },
 }
 

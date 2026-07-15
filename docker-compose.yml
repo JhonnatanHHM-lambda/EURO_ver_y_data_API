@@ -59,6 +59,10 @@ services:
         condition: service_started
       minio:
         condition: service_started
+    volumes:
+      # Compartido con celery_migracion: api recibe los archivos (POST multipart,
+      # views._guardar_archivos_temporales) y el worker los lee para procesarlos.
+      - migracion_media_data:/app/media/migracion_masiva_archivo
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8000/admin/login/ || exit 1"]
       interval: 15s
@@ -100,7 +104,39 @@ services:
         limits:
           memory: 128M
 
+  # Worker dedicado para migracion_masiva_archivo (OCR + Playwright/SAIA).
+  # Concurrency=1 a proposito: execution_control.py es un singleton en memoria de
+  # proceso (un solo lote EN_PROCESO a la vez); con --concurrency>1 dos procesos
+  # hijos del pool prefork tendrian cada uno su propia copia de ese estado y el
+  # cancelar/estado del dashboard dejaria de reflejar la realidad. Ver
+  # INFRA_MIGRACION_MASIVA_ARCHIVO.md.
+  celery_migracion:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery-migracion
+    restart: unless-stopped
+    env_file: .env
+    command: celery -A EURO_ver_y_data worker -l info -Q migracion_masiva_archivo --concurrency=1
+    environment:
+      SKIP_MIGRATE: "true"
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - migracion_media_data:/app/media/migracion_masiva_archivo
+      - migracion_saia_screenshots:/app/saia_screenshots
+      # Carpeta de red de origen (montada como CIFS/SMB en el HOST, ver
+      # INFRA_MIGRACION_MASIVA_ARCHIVO.md punto 1) — bind mount, no un volumen
+      # nombrado de Docker, porque el contenido real vive fuera de Docker.
+      - /mnt/gestion-documental:/mnt/gestion-documental
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  migracion_media_data:
+  migracion_saia_screenshots:

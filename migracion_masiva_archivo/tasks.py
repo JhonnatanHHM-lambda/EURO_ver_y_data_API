@@ -1,4 +1,11 @@
+import logging
+import os
+import shutil
+from datetime import timedelta
+from pathlib import Path
+
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from .execution_control import control
@@ -266,3 +273,122 @@ def _log(lote, nivel, evento, mensaje, detalle):
 
 # Compatibilidad con el nombre anterior usado durante el MVP.
 procesar_carga_migracion_masiva_archivo = procesar_lote_migracion_masiva_archivo
+
+
+@shared_task(name='migracion_masiva_archivo.tasks.purgar_logs_antiguos', queue='migracion_masiva_archivo')
+def purgar_logs_antiguos_migracion_masiva_archivo():
+    """
+    Purga LogProcesoDocumental con mas de 90 dias de antiguedad para controlar el
+    crecimiento de la tabla.
+
+    Reemplaza el hilo de purga de un solo disparo por proceso del app de
+    escritorio (threading.Timer con 5s de delay al arrancar): un servidor Django
+    de larga duracion (Gunicorn) no se reinicia a diario como el app de
+    escritorio, asi que ese patron casi nunca volveria a ejecutarse. Programada
+    en CELERY_BEAT_SCHEDULE (settings.py) para correr diariamente.
+    """
+    cutoff = timezone.now() - timedelta(days=90)
+    eliminados, _ = LogProcesoDocumental.objects.filter(creado__lt=cutoff).delete()
+    if eliminados:
+        logging.getLogger('migracion_masiva_archivo').info(
+            'Limpieza automatica: %d logs eliminados (> 90 dias).', eliminados,
+        )
+    return {'eliminados': eliminados}
+
+
+@shared_task(name='migracion_masiva_archivo.tasks.purgar_screenshots_saia', queue='migracion_masiva_archivo')
+def purgar_screenshots_saia_antiguos():
+    """
+    Purga capturas de pantalla de SAIA_SCREENSHOT_DIR con mas de
+    SAIA_SCREENSHOT_RETENTION_DIAS dias (default 30). Son evidencia de auditoria de
+    cada intento de carga a SAIA (services/saia/browser_client.py:capture_screenshot),
+    pero se acumulan indefinidamente sin este job — ver INFRA_MIGRACION_MASIVA_ARCHIVO.md.
+
+    Usa la fecha de modificacion del archivo (no el timestamp en el nombre), asi que
+    es robusto ante cualquier cambio futuro en el formato de nombre de archivo.
+    """
+    from .services.saia.config import get_saia_config
+
+    retencion_dias = int(os.getenv('SAIA_SCREENSHOT_RETENTION_DIAS', '30'))
+    cutoff_ts = (timezone.now() - timedelta(days=retencion_dias)).timestamp()
+    screenshot_dir = get_saia_config().screenshot_dir
+
+    eliminados = 0
+    bytes_liberados = 0
+    if screenshot_dir.is_dir():
+        for archivo in screenshot_dir.glob('*.png'):
+            try:
+                stat = archivo.stat()
+                if stat.st_mtime < cutoff_ts:
+                    bytes_liberados += stat.st_size
+                    archivo.unlink()
+                    eliminados += 1
+            except OSError:
+                continue
+
+    if eliminados:
+        logging.getLogger('migracion_masiva_archivo').info(
+            'Limpieza automatica: %d capturas de pantalla SAIA eliminadas (> %d dias, %.1f MB liberados).',
+            eliminados, retencion_dias, bytes_liberados / (1024 * 1024),
+        )
+    return {'eliminados': eliminados, 'bytes_liberados': bytes_liberados}
+
+
+_ESTADOS_LOTE_TERMINALES = {'FINALIZADO', 'FINALIZADO_CON_ERRORES', 'CANCELADO'}
+
+
+@shared_task(name='migracion_masiva_archivo.tasks.purgar_uploads_antiguos', queue='migracion_masiva_archivo')
+def purgar_uploads_antiguos_migracion_masiva_archivo():
+    """
+    Purga las carpetas de archivos subidos vía API (MIGRACION_ARCHIVOS_MEDIA_ROOT/uploads/<uuid>,
+    creadas por views._guardar_archivos_temporales) para lotes en estado terminal con mas de
+    MIGRACION_ARCHIVOS_UPLOADS_RETENTION_DIAS dias (default 90) desde su ultima modificacion.
+
+    Solo toca carpeta_origen que esta DENTRO de MIGRACION_ARCHIVOS_MEDIA_ROOT/uploads: los lotes
+    creados apuntando directamente a una carpeta de red (ej. el share montado en /mnt/...) nunca
+    se tocan aqui -- esos archivos son el repositorio vivo de la oficina, no un upload desechable
+    de este sistema. Ver INFRA_MIGRACION_MASIVA_ARCHIVO.md.
+    """
+    retencion_dias = int(os.getenv('MIGRACION_ARCHIVOS_UPLOADS_RETENTION_DIAS', '90'))
+    cutoff = timezone.now() - timedelta(days=retencion_dias)
+    uploads_root = Path(getattr(settings, 'MIGRACION_ARCHIVOS_MEDIA_ROOT', settings.MEDIA_ROOT)) / 'uploads'
+    uploads_root_resolved = str(uploads_root.resolve())
+
+    candidatos = LoteDocumental.objects.filter(
+        estado_proceso__in=_ESTADOS_LOTE_TERMINALES,
+        modificado__lt=cutoff,
+    )
+
+    eliminados = 0
+    for lote in candidatos:
+        carpeta = Path(lote.carpeta_origen)
+        try:
+            carpeta_resuelta = str(carpeta.resolve())
+        except OSError:
+            continue
+        # Guard de seguridad: solo se borra si la ruta realmente esta dentro de la
+        # carpeta de uploads de este modulo, nunca una ruta de red arbitraria.
+        if not carpeta_resuelta.startswith(uploads_root_resolved + os.sep):
+            continue
+        if not carpeta.is_dir():
+            continue
+
+        shutil.rmtree(carpeta, ignore_errors=True)
+        eliminados += 1
+        LogProcesoDocumental.objects.create(
+            lote=lote,
+            nivel='INFO',
+            evento='purga_uploads_antiguos',
+            mensaje=(
+                f'Carpeta de archivos subidos eliminada tras {retencion_dias} dias '
+                f'en estado terminal ({lote.estado_proceso}).'
+            ),
+            detalle={'carpeta_origen': str(carpeta)},
+        )
+
+    if eliminados:
+        logging.getLogger('migracion_masiva_archivo').info(
+            'Limpieza automatica: %d carpeta(s) de uploads de lotes terminados eliminadas (> %d dias).',
+            eliminados, retencion_dias,
+        )
+    return {'eliminados': eliminados}

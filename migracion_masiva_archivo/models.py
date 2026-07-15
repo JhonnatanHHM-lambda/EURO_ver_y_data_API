@@ -70,11 +70,6 @@ class LoteDocumental(BaseModel):
         verbose_name_plural = 'Lotes documentales'
         db_table = 'migracion_masiva_archivo_lotes'
         ordering = ['-creado']
-        permissions = [
-            ('can_view_migracion_masiva_archivo', 'Puede ver Migración Masiva de Archivo'),
-            ('can_manage_migracion_masiva_archivo', 'Puede gestionar Migración Masiva de Archivo'),
-            ('can_upload_migracion_masiva_archivo_saia', 'Puede cargar documentos en SAIA desde Migración Masiva de Archivo'),
-        ]
 
     def __str__(self):
         return self.nombre

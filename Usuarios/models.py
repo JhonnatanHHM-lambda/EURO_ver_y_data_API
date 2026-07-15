@@ -80,6 +80,10 @@ class Usuario(BaseModel, AbstractBaseUser, PermissionsMixin):
             ('can_manage_firma_gh',           'Puede gestionar la firma digital del empleador'),
             # Optimización de correo
             ('can_view_optimizacion_correos', 'Puede ver Optimización Correos'),
+            # Migración Masiva de Archivo
+            ('can_view_migracion_masiva_archivo', 'Puede ver Migración Masiva de Archivo'),
+            ('can_manage_migracion_masiva_archivo', 'Puede gestionar Migración Masiva de Archivo'),
+            ('can_upload_migracion_masiva_archivo_saia', 'Puede cargar documentos en SAIA desde Migración Masiva de Archivo'),
         ]
         indexes = [
             models.Index(fields=['correo']),

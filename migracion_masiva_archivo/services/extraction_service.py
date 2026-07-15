@@ -3,7 +3,7 @@ import re
 from datetime import date
 
 from .file_name_service import extraer_metadata_nombre_archivo
-from .normalizacion_service import normalize_consecutivo, normalize_date, normalize_text
+from .normalizacion_service import normalize_consecutivo, normalize_date, normalize_money, normalize_nit, normalize_text
 
 _CC_ABIERTA_RE = re.compile(r'CARTERA\s+COLECTIVA\s+ABIERTA', re.IGNORECASE)
 _CC_VALOR_RE   = re.compile(r'CARTERA\s+COLECTIVA\s+(?:DE\s+)?VALOR', re.IGNORECASE)
@@ -265,6 +265,484 @@ def _extract_retencion_ica_title(value):
     if re.search(r'\bDECLARACION\s+BIMESTR(?:AL|E)\b', text):
         return _RETENCION_ICA_BIMESTRAL_TITLE
     return _RETENCION_ICA_TITLE
+
+
+# ── Impuesto al Consumo (Recibo Oficial de Pago Impuestos Nacionales - DIAN 490) ──
+# Portado desde Euro_gestion_documental_API/Documental/services/extraction_service.py
+# (nunca se habia portado — ver Fase 7 de la migracion). Clasificacion por
+# CARPETA/CONTENIDO (igual que RICA/ECB/EGC/Bancolombia), no por codigo de nombre
+# de archivo: los archivos originales conservan su nombre de escaneo y viven en una
+# carpeta "Impuesto al Consumo" (con subcarpetas o nombres de archivo que mencionan
+# el bimestre). El contenido OCR confirma el titulo del formulario 490 y extrae los
+# datos minimos (periodo/bimestre, año, valor, fecha de pago, NIT) para validacion
+# cruzada antes de subir a SAIA.
+_IMPUESTO_CONSUMO_PATH_RE = re.compile(r'IMPUESTOS?\s+AL\s+CONSUMO|IMPUESTOS?\s+CONSUMO')
+_IMPUESTO_CONSUMO_TITLE_RE = re.compile(
+    r'RECIBO\s+OFICIAL\s+DE\s+PAGO\s+(?:DE\s+)?IMPUESTOS?\s+NACIONALES',
+)
+_IMPUESTO_CONSUMO_BIMESTRE_RE = re.compile(r'\bBIMESTRE\s*([1-6])\b')
+_IMPUESTO_CONSUMO_PERIODO_RE = re.compile(
+    r'\bPERIODO\b(?!\s*(?:INICIAL|FINAL))\D{0,10}?([1-6])\b',
+)
+_IMPUESTO_CONSUMO_ANO_RE = re.compile(r'\bANO\b\D{0,10}?(20\d{2})\b')
+_IMPUESTO_CONSUMO_CONCEPTO_RE = re.compile(r'\bCONCEPTO\D{0,10}?(\d{2})\b')
+_IMPUESTO_CONSUMO_VALOR_RE = re.compile(
+    r'VALOR\s+PAGO\s+IMPUESTO\D{0,20}?([\d.,]{4,15})',
+)
+_IMPUESTO_CONSUMO_FECHA_PAGO_RE = re.compile(
+    r'FECHA\s+PARA\s+EL\s+PAGO\D{0,20}?(\d{4})\D{1,3}(\d{1,2})\D{1,3}(\d{1,2})\b',
+)
+_IMPUESTO_CONSUMO_NIT_RE = re.compile(r'\bNIT\D{0,15}?(\d{6,10}[-\s]?\d)\b')
+_IMPUESTO_CONSUMO_CODES = {'IC1', 'IC2', 'IC3', 'IC4', 'IC5', 'IC6'}
+
+# Ademas de los 6 recibos bimestrales (IC1..IC6), existe un septimo expediente
+# separado en SAIA ("IMPUESTO AL CONSUMO2014", sin espacio) para el auxiliar
+# contable anual de la cuenta 24780101 - no es un recibo DIAN y no tiene bimestre.
+_IMPUESTO_CONSUMO_LEDGER_RE = re.compile(
+    r'CONSULTAS\s+CUENTAS|PUC[\s\-]*PLAN\s+UNICO\s+DE\s+CUENTAS|AUXILIAR\s*[:.]',
+)
+
+
+def _is_impuesto_consumo_path(ruta_archivo):
+    return bool(_IMPUESTO_CONSUMO_PATH_RE.search(normalize_text(ruta_archivo)))
+
+
+def _looks_like_impuesto_consumo_content(text_upper):
+    """Respaldo cuando la carpeta no menciona 'Impuesto al Consumo': el titulo
+    del recibo 490 por si solo no basta (la DIAN lo usa para Renta, IVA, etc.),
+    asi que se exige ademas la mencion literal 'IMPUESTO AL CONSUMO' (presente
+    en la pagina del auxiliar contable) o el codigo de concepto 21."""
+    if _IMPUESTO_CONSUMO_TITLE_RE.search(text_upper):
+        if _IMPUESTO_CONSUMO_PATH_RE.search(text_upper):
+            return True
+        return _extract_impuesto_consumo_concepto(text_upper) == '21'
+    # Sin titulo de recibo DIAN: solo clasifica como Impuesto al Consumo si es
+    # inequivocamente el auxiliar contable de esa cuenta especifica.
+    return bool(_IMPUESTO_CONSUMO_LEDGER_RE.search(text_upper) and _IMPUESTO_CONSUMO_PATH_RE.search(text_upper))
+
+
+def _is_impuesto_consumo_ledger(text_upper):
+    return bool(_IMPUESTO_CONSUMO_LEDGER_RE.search(text_upper))
+
+
+def _extract_impuesto_consumo_anual_metadata(text, filename, filename_metadata, ruta_archivo=''):
+    text_upper = normalize_text(text)
+    filename_stem = os.path.splitext(os.path.basename(filename))[0].strip() if filename else ''
+
+    ledger_ok = _is_impuesto_consumo_ledger(text_upper)
+    año = (
+        _extract_impuesto_consumo_ano(text_upper)
+        or _extract_year_from_text(text_upper)
+        or _extract_year_from_text(ruta_archivo)
+        or _extract_year_from_text(filename_stem)
+    )
+
+    inconsistencias = []
+    if not ledger_ok:
+        inconsistencias.append('PDF no confirma el auxiliar contable (Consultas Cuentas / PUC)')
+    if not año:
+        inconsistencias.append('No se detecto anio en el documento')
+
+    asunto = filename_stem or (f'IMPUESTO AL CONSUMO {año}' if año else '')
+
+    if ledger_ok and año:
+        confianza, requiere_revision = 90, False
+    elif ledger_ok or año:
+        confianza, requiere_revision = 60, True
+    else:
+        confianza, requiere_revision = 35, True
+
+    return {
+        'nit': '',
+        'proveedor': 'INVERSIONES EURO S.A',
+        'consecutivo': asunto,
+        'fecha_documento': date(año, 12, 31) if año else None,
+        'tipo_documento': 'DOCUMENTO_IMPUESTO_CONSUMO_ANUAL',
+        'valor': None,
+        'medio_pago': '',
+        'confianza': confianza,
+        'normalizado': bool(año),
+        'requiere_revision': requiere_revision,
+        'mismatch_consecutivo': False,
+        'mismatch_bloquea': False,
+        'ocr_consecutivo_original': '',
+        'datos_pel': {
+            'impuesto_consumo_anual_ledger_ok': ledger_ok,
+            'impuesto_consumo_anual_año': año,
+            'impuesto_consumo_anual_inconsistencias': inconsistencias,
+            'asunto_saia': asunto,
+            'identidad_documental': asunto,
+        },
+        'observaciones_extraccion': (
+            f'Impuesto al Consumo (auxiliar anual): ledger_ok={ledger_ok}, anio={año}'
+        ),
+    }
+
+
+def _extract_impuesto_consumo_metadata(text, filename, filename_metadata, ruta_archivo=''):
+    text_upper = normalize_text(text)
+    ruta_upper = normalize_text(ruta_archivo)
+    filename_stem = os.path.splitext(os.path.basename(filename))[0].strip() if filename else ''
+
+    document_identifier = filename_metadata.get('tipo_documento_nombre') or ''
+    periodo_nombre = (
+        int(document_identifier[-1])
+        if document_identifier in _IMPUESTO_CONSUMO_CODES
+        else None
+    )
+
+    title_ok = bool(_IMPUESTO_CONSUMO_TITLE_RE.search(text_upper))
+    periodo_pdf = _extract_impuesto_consumo_periodo(text_upper)
+    periodo_carpeta = _extract_impuesto_consumo_bimestre(ruta_upper) or _extract_impuesto_consumo_bimestre(
+        normalize_text(filename_stem)
+    )
+    año = _extract_impuesto_consumo_ano(text_upper) or _extract_year_from_text(ruta_archivo)
+    concepto = _extract_impuesto_consumo_concepto(text_upper)
+    valor_pago = _extract_impuesto_consumo_valor(text_upper)
+    fecha_pago = _extract_impuesto_consumo_fecha_pago(text_upper)
+    nit = _extract_impuesto_consumo_nit(text_upper)
+
+    bimestre = periodo_pdf or periodo_carpeta or periodo_nombre
+
+    inconsistencias = []
+    if not title_ok:
+        inconsistencias.append('PDF no confirma titulo RECIBO OFICIAL DE PAGO IMPUESTOS NACIONALES')
+    if periodo_pdf and periodo_carpeta and periodo_pdf != periodo_carpeta:
+        inconsistencias.append(
+            f'periodo del PDF ({periodo_pdf}) no coincide con el bimestre de la carpeta ({periodo_carpeta})'
+        )
+    if periodo_pdf and periodo_nombre and periodo_pdf != periodo_nombre:
+        inconsistencias.append(
+            f'periodo del PDF ({periodo_pdf}) no coincide con el bimestre del nombre de archivo ({periodo_nombre})'
+        )
+    if not año:
+        inconsistencias.append('No se detecto anio en el PDF')
+    if not bimestre:
+        inconsistencias.append('No se detecto el bimestre (periodo) del documento')
+
+    asunto = filename_stem or (f'IMPUESTO AL CONSUMO BIMESTRE {bimestre} {año}' if bimestre and año else '')
+    fecha_documento = fecha_pago or (date(año, 1, 1) if año else None)
+
+    if title_ok and año and bimestre and not inconsistencias:
+        confianza, requiere_revision = 95, False
+    elif title_ok or periodo_pdf or año:
+        confianza, requiere_revision = 65, True
+    else:
+        confianza, requiere_revision = 40, True
+
+    return {
+        'nit': nit,
+        'proveedor': 'INVERSIONES EURO S.A',
+        'consecutivo': asunto,
+        'fecha_documento': fecha_documento,
+        'tipo_documento': 'DOCUMENTO_IMPUESTO_CONSUMO',
+        'valor': valor_pago,
+        'medio_pago': '',
+        'confianza': confianza,
+        'normalizado': bool(año and bimestre),
+        'requiere_revision': requiere_revision,
+        'mismatch_consecutivo': False,
+        'mismatch_bloquea': False,
+        'ocr_consecutivo_original': '',
+        'datos_pel': {
+            'impuesto_consumo_titulo_ok': title_ok,
+            'impuesto_consumo_periodo': periodo_pdf,
+            'impuesto_consumo_periodo_carpeta': periodo_carpeta,
+            'impuesto_consumo_periodo_nombre': periodo_nombre,
+            'impuesto_consumo_bimestre': bimestre,
+            'impuesto_consumo_año': año,
+            'impuesto_consumo_concepto': concepto,
+            'impuesto_consumo_valor_pago': str(valor_pago) if valor_pago is not None else '',
+            'impuesto_consumo_fecha_pago': fecha_pago.isoformat() if fecha_pago else '',
+            'impuesto_consumo_nit': nit,
+            'impuesto_consumo_inconsistencias': inconsistencias,
+            'asunto_saia': asunto,
+            'identidad_documental': asunto,
+        },
+        'observaciones_extraccion': (
+            f'Impuesto al Consumo: titulo_ok={title_ok}, bimestre={bimestre}, '
+            f'anio={año}, valor={valor_pago}'
+        ),
+    }
+
+
+def _extract_impuesto_consumo_periodo(value):
+    match = _IMPUESTO_CONSUMO_PERIODO_RE.search(value)
+    if not match:
+        return None
+    try:
+        periodo = int(match.group(1))
+    except ValueError:
+        return None
+    return periodo if 1 <= periodo <= 6 else None
+
+
+def _extract_impuesto_consumo_bimestre(value):
+    match = _IMPUESTO_CONSUMO_BIMESTRE_RE.search(value)
+    return int(match.group(1)) if match else None
+
+
+def _extract_impuesto_consumo_ano(value):
+    match = _IMPUESTO_CONSUMO_ANO_RE.search(value)
+    return int(match.group(1)) if match else None
+
+
+def _extract_impuesto_consumo_concepto(value):
+    match = _IMPUESTO_CONSUMO_CONCEPTO_RE.search(value)
+    return match.group(1) if match else ''
+
+
+def _extract_impuesto_consumo_valor(value):
+    match = _IMPUESTO_CONSUMO_VALOR_RE.search(value)
+    if not match:
+        return None
+    return normalize_money(match.group(1))
+
+
+def _extract_impuesto_consumo_fecha_pago(value):
+    match = _IMPUESTO_CONSUMO_FECHA_PAGO_RE.search(value)
+    if not match:
+        return None
+    year, month, day = (int(item) for item in match.groups())
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def _extract_impuesto_consumo_nit(value):
+    match = _IMPUESTO_CONSUMO_NIT_RE.search(value)
+    return normalize_nit(match.group(1)) if match else ''
+
+
+# ── Ajustes Contables internos: INC "Indirectos Contables Cierre" e IND
+# "Indirectos Contables" (comprobantes contable internos) ───────────────────
+# Ambos viven en SAIA bajo Archivo Central > Direccion de Contabilidad >
+# Ajustes Contables, comparten el mismo formato de encabezado interno
+# ("Numero:", "Fecha:") y NO tienen encabezado "Pagos Electronicos" (no son
+# PEL), asi que usan su propio extractor en vez del generico. No devuelve
+# nit, proveedor, valor ni medio_pago (D. Cruce/M. Pago): no aplican a este
+# tipo de documento y no aportan nada para ubicarlo o validarlo, asi que ni
+# siquiera se incluyen en el diccionario. El prefijo del consecutivo varia
+# segun el area que lo emite (ej. "MAY-INC-00000185" Mayorista,
+# "ADM-IND-00000041" Administracion), por lo que se lee del propio documento
+# en vez de asumir siempre "MAY". Clasificacion por CARPETA (disco:
+# .../INC|IND/<año>/...) o por el codigo de nombre de archivo, igual que
+# RCG/ECB. Portado desde Euro_gestion_documental_API (nunca se habia portado).
+_INC_TITLE_RE = re.compile(r'INDIRECTOS\s+CONTABLES\s+CIERRE')
+# IND no lleva "CIERRE"; el lookahead negativo evita que un comprobante INC
+# (que SI contiene "INDIRECTOS CONTABLES" como subcadena) se clasifique como IND.
+_IND_TITLE_RE = re.compile(r'INDIRECTOS\s+CONTABLES\b(?!\s+CIERRE)')
+_AJUSTE_CONTABLE_FECHA_RE = re.compile(r'\bFECHA\s*[:\-]?\s*(\d{1,2})[\/\-]([A-Z]{3}|\d{1,2})[\/\-](\d{2,4})\b')
+_AJUSTE_CONTABLE_MESES_ABREV_EN = {
+    'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
+    'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12,
+}
+
+
+def _is_inc_path(ruta_archivo):
+    ruta_upper = normalize_text(ruta_archivo)
+    return bool(re.search(r'[\\/]INC[\\/]', ruta_upper)) or 'INDIRECTOS CONTABLES CIERRE' in ruta_upper
+
+
+def _is_ind_path(ruta_archivo):
+    return bool(re.search(r'[\\/]IND[\\/]', normalize_text(ruta_archivo)))
+
+
+def _extract_ajuste_contable_fecha(text_upper):
+    match = _AJUSTE_CONTABLE_FECHA_RE.search(text_upper)
+    if not match:
+        return None
+    day_s, month_s, year_s = match.groups()
+    try:
+        day = int(day_s)
+    except ValueError:
+        return None
+    month = _AJUSTE_CONTABLE_MESES_ABREV_EN.get(month_s) if month_s.isalpha() else int(month_s)
+    if not month:
+        return None
+    year = int(year_s)
+    if year < 100:
+        year += 2000
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def _extract_ajuste_contable_numero(text_upper, code):
+    match = re.search(rf'\b([A-Z]{{2,4}})[\s\-]*{code}[\s\-]*0*(\d{{3,8}})\b', text_upper)
+    if not match:
+        return '', None
+    prefix, number = match.groups()
+    return prefix, int(number)
+
+
+def _extract_ajuste_contable_numero_from_filename(filename_stem, code):
+    # file_name_service.py exige 4-8 digitos (pensado para PEL/RCG/ECB), pero
+    # estos comprobantes usan numeros cortos sin ceros a la izquierda (ej.
+    # "IND 41.pdf"), asi que se extraen aqui con una regla propia mas
+    # permisiva (1-8 digitos).
+    match = re.search(rf'\b{code}\s*[\-]?\s*0*(\d{{1,8}})\b', normalize_text(filename_stem))
+    return int(match.group(1)) if match else None
+
+
+def _extract_ajuste_contable_metadata(text_upper, filename_stem, ruta_archivo, code, title_re, tipo_documento):
+    prefix_key = code.lower()
+
+    title_ok = bool(title_re.search(text_upper))
+    prefix, numero_pdf = _extract_ajuste_contable_numero(text_upper, code)
+    fecha = _extract_ajuste_contable_fecha(text_upper)
+    filename_numero = _extract_ajuste_contable_numero_from_filename(filename_stem, code)
+
+    # El OCR de comprobantes antiguos (impresora de matriz de puntos) confunde
+    # digitos (0/9) y letras similares en el numero impreso (ej. "ING" en vez
+    # de "INC"); el nombre de archivo (tecleado a mano) es la fuente de
+    # verdad para el numero. El OCR solo aporta el prefijo de area
+    # (MAY/ADM/...), que no esta en el nombre de archivo.
+    numero = filename_numero or numero_pdf
+    año = fecha.year if fecha else _extract_year_from_text(ruta_archivo)
+
+    # Solo se valida (bloquea) el consecutivo interno y el año del
+    # encabezado. El titulo se registra en datos_pel como dato informativo,
+    # pero ya no bloquea la carga a SAIA aunque no se lea.
+    inconsistencias = []
+    if not numero:
+        inconsistencias.append('No se detecto el numero de comprobante ni en el PDF ni en el nombre de archivo')
+    if numero_pdf and filename_numero and int(numero_pdf) != int(filename_numero):
+        inconsistencias.append(
+            f'numero del PDF ({numero_pdf}) no coincide con el numero del nombre de archivo ({filename_numero})'
+        )
+    if not año:
+        inconsistencias.append('No se detecto el anio del comprobante')
+
+    if numero and prefix:
+        consecutivo = f'{prefix}-{code}-{int(numero):08d}'
+    elif numero:
+        consecutivo = f'{code}-{int(numero):08d}'
+    else:
+        consecutivo = filename_stem
+
+    if numero and año and not inconsistencias:
+        confianza, requiere_revision = 95, False
+    elif numero or año:
+        confianza, requiere_revision = 65, True
+    else:
+        confianza, requiere_revision = 40, True
+
+    return {
+        'consecutivo': consecutivo,
+        'fecha_documento': fecha or (date(año, 1, 1) if año else None),
+        'tipo_documento': tipo_documento,
+        'confianza': confianza,
+        'normalizado': bool(numero and fecha),
+        'requiere_revision': requiere_revision,
+        'mismatch_consecutivo': False,
+        'mismatch_bloquea': False,
+        'ocr_consecutivo_original': '',
+        'datos_pel': {
+            f'{prefix_key}_titulo_ok': title_ok,
+            f'{prefix_key}_prefijo': prefix,
+            f'{prefix_key}_numero': numero,
+            f'{prefix_key}_numero_pdf': numero_pdf,
+            f'{prefix_key}_numero_nombre': filename_numero,
+            f'{prefix_key}_fecha': fecha.isoformat() if fecha else '',
+            f'{prefix_key}_año': año,
+            f'{prefix_key}_inconsistencias': inconsistencias,
+            'asunto_saia': consecutivo,
+            'identidad_documental': consecutivo,
+        },
+        'observaciones_extraccion': (
+            f'{code}: titulo_ok={title_ok}, numero={consecutivo}, fecha={fecha}'
+        ),
+    }
+
+
+def _extract_inc_metadata(text, filename, filename_metadata, ruta_archivo=''):
+    text_upper = normalize_text(text)
+    filename_stem = os.path.splitext(os.path.basename(filename))[0].strip() if filename else ''
+    return _extract_ajuste_contable_metadata(
+        text_upper, filename_stem, ruta_archivo,
+        code='INC', title_re=_INC_TITLE_RE,
+        tipo_documento='DOCUMENTO_INC',
+    )
+
+
+# Al menos IND 2016 organiza los comprobantes en sub-expedientes por sede
+# (ADMINISTRACION, BARBOSA, BELLO, BERNAL, CASTILLA, CEDI, DESPOSTAR,
+# FLORIDA, LAURELES, MARINILLA, MAYORISTA, MONTERIA, PALMAS, SABANETA...) -
+# la sede confiable para RUTEAR es la carpeta local (igual que BBVA/
+# Davivienda/Bogota), ya que en SAIA el mismo nombre de carpeta es el
+# sub-expediente dentro de "IND <año>". Para VALIDAR se usa el nombre de
+# sede impreso en el propio documento (linea debajo del NIT, en la columna
+# izquierda del encabezado - ej. "EURO BARBOSA", "ADMINISTRACION"), no el
+# prefijo del consecutivo: asi cubre cualquier sede sin necesitar una tabla
+# de siglas confirmadas una por una.
+_TERCERO_LABEL_RE = re.compile(r'\bTERCERO\b')
+
+
+def _extract_ind_sede_from_path(ruta_archivo):
+    """Nombre de la subcarpeta de sede (padre inmediato del archivo), o '' si
+    el archivo vive directo en la carpeta del año (años sin sub-expediente)."""
+    if not ruta_archivo:
+        return ''
+    try:
+        from pathlib import PurePosixPath, PureWindowsPath
+        ruta_text = str(ruta_archivo)
+        parent = PureWindowsPath(ruta_text).parent.name or PurePosixPath(ruta_text).parent.name
+        parent = parent.strip()
+    except Exception:
+        return ''
+    if not parent or re.fullmatch(r'20\d{2}', parent):
+        return ''
+    return parent
+
+
+def _extract_ind_sede_header(text_upper):
+    """Nombre de sede impreso en el encabezado (debajo del NIT), tomando el
+    texto entre el final de la linea 'Fecha:' y la siguiente etiqueta
+    'Tercero:'. Es la sede tal como la escribio quien emitio el documento,
+    no un codigo que haya que traducir."""
+    fecha_match = _AJUSTE_CONTABLE_FECHA_RE.search(text_upper)
+    if not fecha_match:
+        return ''
+    resto = text_upper[fecha_match.end():]
+    tercero_match = _TERCERO_LABEL_RE.search(resto)
+    candidate = resto[:tercero_match.start()] if tercero_match else resto[:60]
+    candidate = re.sub(r'\bEURO\b', ' ', candidate)
+    candidate = re.sub(r'[^A-Z\s]', ' ', candidate)
+    return re.sub(r'\s+', ' ', candidate).strip()
+
+
+def _sede_header_matches_folder(sede_header, sede_carpeta):
+    """True/False si se puede comparar; None si falta alguno de los dos lados."""
+    header_norm = normalize_text(sede_header)
+    carpeta_norm = normalize_text(sede_carpeta)
+    if not header_norm or not carpeta_norm:
+        return None
+    return carpeta_norm in header_norm or header_norm in carpeta_norm
+
+
+def _extract_ind_metadata(text, filename, filename_metadata, ruta_archivo=''):
+    text_upper = normalize_text(text)
+    filename_stem = os.path.splitext(os.path.basename(filename))[0].strip() if filename else ''
+    result = _extract_ajuste_contable_metadata(
+        text_upper, filename_stem, ruta_archivo,
+        code='IND', title_re=_IND_TITLE_RE,
+        tipo_documento='DOCUMENTO_IND',
+    )
+
+    sede_carpeta = _extract_ind_sede_from_path(ruta_archivo)
+    sede_header = _extract_ind_sede_header(text_upper)
+    if _sede_header_matches_folder(sede_header, sede_carpeta) is False:
+        result['datos_pel']['ind_inconsistencias'].append(
+            f'sede del encabezado ({sede_header}) no coincide con la carpeta ({sede_carpeta})'
+        )
+        result['requiere_revision'] = True
+        result['confianza'] = min(result['confianza'], 65)
+    result['datos_pel']['ind_sede'] = sede_carpeta
+    result['datos_pel']['ind_sede_encabezado'] = sede_header
+    return result
 
 
 def _is_ecb_path(ruta_archivo):
@@ -1200,6 +1678,33 @@ def extract_metadata_from_text(text, filename='', ruta_archivo=''):
 
     if _is_retencion_ica_path(ruta_archivo):
         return _extract_retencion_ica_metadata(
+            normalized_text, filename, filename_metadata, ruta_archivo,
+        )
+
+    if (
+        document_identifier in _IMPUESTO_CONSUMO_CODES
+        or _is_impuesto_consumo_path(ruta_archivo)
+        or _looks_like_impuesto_consumo_content(normalized_text)
+    ):
+        # El titulo del recibo DIAN manda cuando esta presente (incluso en un PDF
+        # combinado que tambien incluya el auxiliar contable). Sin ese titulo, si
+        # el contenido es el auxiliar contable, es el septimo expediente anual
+        # ("IMPUESTO AL CONSUMO2014"), no uno de los 6 recibos bimestrales.
+        if not _IMPUESTO_CONSUMO_TITLE_RE.search(normalized_text) and _is_impuesto_consumo_ledger(normalized_text):
+            return _extract_impuesto_consumo_anual_metadata(
+                normalized_text, filename, filename_metadata, ruta_archivo,
+            )
+        return _extract_impuesto_consumo_metadata(
+            normalized_text, filename, filename_metadata, ruta_archivo,
+        )
+
+    if document_identifier == 'INC' or _is_inc_path(ruta_archivo):
+        return _extract_inc_metadata(
+            normalized_text, filename, filename_metadata, ruta_archivo,
+        )
+
+    if document_identifier == 'IND' or _is_ind_path(ruta_archivo):
+        return _extract_ind_metadata(
             normalized_text, filename, filename_metadata, ruta_archivo,
         )
 

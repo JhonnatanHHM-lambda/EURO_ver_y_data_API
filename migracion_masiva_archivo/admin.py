@@ -1,7 +1,9 @@
 ﻿from django.contrib import admin
 
 from .models import (
+    ConfiguracionMigracionMasivaArchivo,
     DocumentoDigitalizado,
+    EjecucionCargaMasiva,
     IntentoCargaSAIA,
     LogProcesoDocumental,
     LoteDocumental,
@@ -54,4 +56,18 @@ class LogProcesoDocumentalAdmin(admin.ModelAdmin):
     list_filter = ('nivel', 'evento', 'creado')
     search_fields = ('evento', 'mensaje', 'documento__nombre_archivo', 'lote__nombre')
 
+
+@admin.register(EjecucionCargaMasiva)
+class EjecucionCargaMasivaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'lote', 'estado_proceso', 'exitosos', 'fallidos', 'pendientes_revision', 'dry_run', 'creado')
+    list_filter = ('estado_proceso', 'dry_run', 'headful', 'creado')
+    search_fields = ('lote__nombre', 'celery_task_id', 'iniciado_por')
+    readonly_fields = ('creado', 'modificado')
+
+
+@admin.register(ConfiguracionMigracionMasivaArchivo)
+class ConfiguracionMigracionMasivaArchivoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'usuario', 'correo_destino', 'creado')
+    search_fields = ('usuario__correo', 'correo_destino')
+    readonly_fields = ('creado', 'modificado')
 

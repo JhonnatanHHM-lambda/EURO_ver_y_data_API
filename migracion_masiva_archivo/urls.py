@@ -11,6 +11,8 @@ from .views import (
     LogsCargaView,
     PararCargaView,
     ProcesarCargaView,
+    ReenviarReporteCargaView,
+    ReporteDiarioSAIAView,
     ResultadosCargaView,
 )
 
@@ -24,6 +26,12 @@ urlpatterns = [
     path('migracion-masiva-archivo/cargas/<int:pk>/resultados/', ResultadosCargaView.as_view(), name='mma-carga-resultados'),
     path('migracion-masiva-archivo/cargas/<int:pk>/logs/', LogsCargaView.as_view(), name='mma-carga-logs'),
     path('migracion-masiva-archivo/cargas/<int:pk>/descargar/', DescargarReporteCargaView.as_view(), name='mma-carga-descargar'),
+    path(
+        'migracion-masiva-archivo/cargas/<int:pk>/reenviar-reporte/',
+        ReenviarReporteCargaView.as_view(),
+        name='mma-carga-reenviar-reporte',
+    ),
+    path('migracion-masiva-archivo/reporte-diario/', ReporteDiarioSAIAView.as_view(), name='mma-reporte-diario'),
     path(
         'migracion-masiva-archivo/cargas/<int:pk>/documentos/<int:doc_id>/revisado/',
         DocumentoRevisadoView.as_view(),

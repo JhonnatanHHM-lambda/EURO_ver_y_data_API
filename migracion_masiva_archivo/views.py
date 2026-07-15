@@ -8,12 +8,13 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import get_valid_filename
-from openpyxl import Workbook
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from EURO_ver_y_data.decoradores import require_permission
 
 from .models import (
     ConfiguracionMigracionMasivaArchivo,
@@ -26,6 +27,7 @@ from .reports.reporte_saia import (
     get_asuntos_exitosos_por_fecha,
     send_reporte_saia_email,
 )
+from .reports.reporte_service import build_exploration_xlsx
 from .serializers import (
     ArchivoMigracionSerializer,
     CargaMasivaArchivoCreateSerializer,
@@ -43,11 +45,13 @@ class CargaMasivaArchivoListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request):
         cargas = LoteDocumental.objects.all()
         serializer = CargaMasivaArchivoListSerializer(cargas, many=True)
         return Response(serializer.data)
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request):
         serializer = CargaMasivaArchivoCreateSerializer(
             data=request.data,
@@ -85,11 +89,13 @@ class CargaMasivaArchivoListCreateView(APIView):
 class CargaMasivaArchivoDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         serializer = CargaMasivaArchivoDetailSerializer(carga, context={'request': request})
         return Response(serializer.data)
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def delete(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         carga.delete()
@@ -99,12 +105,21 @@ class CargaMasivaArchivoDetailView(APIView):
 class ProcesarCargaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         if carga.estado_proceso == 'EN_PROCESO':
             return Response({'detail': 'La carga ya está en proceso.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cargar_saia = _bool_request(request.data.get('cargar_saia'), default=False)
+        if cargar_saia and not request.user.has_perm('Usuarios.can_upload_migracion_masiva_archivo_saia'):
+            return Response(
+                {
+                    'error': 'Permiso denegado',
+                    'required': ['Usuarios.can_upload_migracion_masiva_archivo_saia'],
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         dry_run = _bool_request(request.data.get('dry_run'), default=not cargar_saia)
         headful = _bool_request(request.data.get('headful'), default=False)
         incluir_errores = _bool_request(request.data.get('incluir_errores'), default=False)
@@ -150,6 +165,7 @@ class ProcesarCargaView(APIView):
 class EstadoCargaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         return Response(CargaMasivaArchivoListSerializer(carga).data)
@@ -158,6 +174,7 @@ class EstadoCargaView(APIView):
 class ResultadosCargaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         archivos = carga.documentos.all()
@@ -170,6 +187,7 @@ class ResultadosCargaView(APIView):
 class LogsCargaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         logs = carga.logs.all()
@@ -177,16 +195,27 @@ class LogsCargaView(APIView):
 
 
 class DescargarReporteCargaView(APIView):
+    """
+    Reporte de diagnostico completo (145 columnas: continuidad, OCR, duplicados
+    historicos, relaciones, mensajes de error por fase) via
+    reports.reporte_service.build_exploration_xlsx — el mismo generador que ya
+    usan los comandos manuales de F1-F3, antes solo disponible por esa via. Sin
+    continuity_context (requeriria re-escanear la carpeta de origen), asi que
+    la hoja "Resumen" y las alertas de continuidad no aparecen aqui; el resto
+    del reporte (duplicados, relaciones, errores por fase) si queda completo.
+    """
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
-        workbook = _construir_reporte_carga(carga)
+        documentos = DocumentoDigitalizado.objects.filter(lote=carga).select_related('metadata')
+        xlsx_bytes = build_exploration_xlsx(documentos, carpeta_origen=carga.carpeta_origen)
         response = HttpResponse(
+            xlsx_bytes,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
         response['Content-Disposition'] = f'attachment; filename="migracion_masiva_archivo_{carga.id}.xlsx"'
-        workbook.save(response)
         return response
 
 
@@ -195,6 +224,7 @@ class ReenviarReporteCargaView(APIView):
     a correr el pipeline F2-F5."""
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         destinatarios = _parse_destinatarios(request)
@@ -216,6 +246,7 @@ class ReporteDiarioSAIAView(APIView):
     fecha (equivalente web de generar_reporte_saia.py --fecha)."""
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request):
         fecha = _parse_fecha(request.query_params.get('fecha'))
         con_detalle = _bool_request(request.query_params.get('con_detalle'), default=False)
@@ -228,6 +259,7 @@ class ReporteDiarioSAIAView(APIView):
         response['Content-Disposition'] = f'attachment; filename="reporte_saia_{fecha.isoformat()}.xlsx"'
         return response
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request):
         fecha = _parse_fecha(request.data.get('fecha'))
         con_detalle = _bool_request(request.data.get('con_detalle'), default=False)
@@ -259,6 +291,7 @@ def _parse_fecha(valor):
 class PararCargaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request, pk):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         ejecucion = carga.ejecuciones.filter(estado_proceso='EN_PROCESO').order_by('-creado').first()
@@ -287,8 +320,15 @@ class PararCargaView(APIView):
 
 
 class DocumentoRevisadoView(APIView):
+    """Marcar un documento como revisado siempre reencola un ciclo de carga SAIA
+    vía _reanudar_saia_si_idle, por lo que además de gestionar el documento exige
+    el permiso de carga a SAIA (no solo de gestión)."""
     permission_classes = [IsAuthenticated]
 
+    @require_permission(
+        ['can_manage_migracion_masiva_archivo', 'can_upload_migracion_masiva_archivo_saia'],
+        app_label='Usuarios',
+    )
     def post(self, request, pk, doc_id):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         documento = get_object_or_404(DocumentoDigitalizado, pk=doc_id, lote=carga)
@@ -323,8 +363,14 @@ class DocumentoRevisadoView(APIView):
 
 
 class DocumentoMarcarOkView(APIView):
+    """Igual que DocumentoRevisadoView: marcar OK reencola un ciclo de carga SAIA
+    vía _reanudar_saia_si_idle, por lo que exige también el permiso de carga a SAIA."""
     permission_classes = [IsAuthenticated]
 
+    @require_permission(
+        ['can_manage_migracion_masiva_archivo', 'can_upload_migracion_masiva_archivo_saia'],
+        app_label='Usuarios',
+    )
     def post(self, request, pk, doc_id):
         carga = get_object_or_404(LoteDocumental, pk=pk)
         documento = get_object_or_404(DocumentoDigitalizado, pk=doc_id, lote=carga)
@@ -361,9 +407,11 @@ class DocumentoMarcarOkView(APIView):
 class ConfiguracionCorreoView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @require_permission(['can_view_migracion_masiva_archivo'], app_label='Usuarios')
     def get(self, request):
         return Response({'correo_destino': _correo_destino_usuario(request.user)})
 
+    @require_permission(['can_manage_migracion_masiva_archivo'], app_label='Usuarios')
     def post(self, request):
         correo = (request.data.get('correo_destino') or '').strip()
         if not correo:
@@ -441,32 +489,3 @@ def _bool_request(value, default=False):
     return str(value).strip().lower() in {'1', 'true', 'yes', 'si', 'sí', 'on'}
 
 
-def _construir_reporte_carga(carga):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = 'Migración'
-    ws.append([
-        'Archivo', 'Estado', 'Extensión', 'Peso bytes', 'Hash',
-        'NIT', 'Proveedor', 'Consecutivo', 'Tipo documento',
-        'Valor', 'Error',
-    ])
-    documentos = DocumentoDigitalizado.objects.filter(lote=carga).select_related('metadata')
-    for doc in documentos:
-        try:
-            meta = doc.metadata
-        except Exception:
-            meta = None
-        ws.append([
-            doc.nombre_archivo,
-            doc.estado_proceso,
-            doc.extension,
-            doc.peso_bytes,
-            doc.hash_archivo,
-            meta.nit if meta else '',
-            meta.proveedor if meta else '',
-            meta.consecutivo if meta else '',
-            meta.tipo_documento if meta else '',
-            meta.valor if meta else '',
-            doc.error,
-        ])
-    return wb

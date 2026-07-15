@@ -1,4 +1,17 @@
-﻿import csv
+﻿"""
+Reportes de exploracion/diagnostico (Fase 1-3) para los comandos manuales
+explorar_documental, procesar_documental_metadata y relacionar_documental.
+
+No es parte del flujo de produccion via API/Celery (tasks.py -> services/lote_service.py,
+metadata_service.py, relaciones_service.py). El flag 'procesar_saia' calculado aqui por
+_assign_saia_processing() es una PREDICCION informativa para el reporte de exploracion,
+no el gate real: la validacion que efectivamente decide si un documento se sube a SAIA es
+services/saia/validation_service.validate_document_for_saia(), invocada por el Celery task
+antes de la Fase 5. Si cambian las reglas de elegibilidad SAIA, revisar si el cambio aplica
+tambien aqui para que el reporte de exploracion no quede desalineado con el gate real.
+"""
+
+import csv
 import io
 import json
 from collections import defaultdict
